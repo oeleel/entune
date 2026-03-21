@@ -1,0 +1,11 @@
+{
+  "agents/pm-agent/SKILL.md": "6d6ee113e8a8571fc878683ca4d14986cf2d6b9939831bde3e1219c1948a4284",
+  "agents/tdd-agent/SKILL.md": "bd4e1751c9305c0d72d067de8a03aa6325c6bd46ec402b9e1ccf95fc67bc0f4f",
+  "patterns/web-design-guidelines/SKILL.md": "bd5da57ef2655fdcdd121b186a1eec22e9fe692709695b953bb6af7d1e4b6820",
+  "agents/frontend-review/SKILL.md": "49965cd82be75d0812ac65fa9c7e9be86b5d187d61c4d571c630e42d4aec1bbc",
+  "agents/bug-workflow/SKILL.md": "e511ba98788a0053c3dbb3b33502818ba5978039a2d5179695c0d8cbd8fa5d4c",
+  "patterns/ux-heuristics/SKILL.md": "c07485315bc83bd512e3c478a8ed18720d4f10a5cca1de43b87c03c2b5734612",
+  "patterns/react-best-practices/SKILL.md": "a03dbeb1f50861a19c94762fa9151b269f599dea91c438936d5fd640c64424e0",
+  "agents/code-health/SKILL.md": "6ff47aba6771a5f4fb4f1aa5faf0af0b2abf93fa7cc608226d80f622ba44f8b2",
+  "agents/detect-project/SKILL.md": "6da82a5405a757fe8051194780706be48e9b2bed0bd2ef3de6d93b13b821d409"
+}

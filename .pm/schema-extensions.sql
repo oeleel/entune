@@ -1,0 +1,3 @@
+-- .pm/schema-extensions.sql
+-- Project-specific schema extensions for Entune.
+-- This file is never overwritten by n2o sync.

@@ -1,0 +1,25 @@
+{
+  "n2o_version": "1.0.0",
+  "project_name": "entune",
+  "developer_name": "Leo Lee",
+  "commands": {
+    "test": "",
+    "typecheck": "npm run build",
+    "lint": "npm run lint",
+    "build": "npm run build"
+  },
+  "database": {
+    "type": "postgresql",
+    "env_var": "NEXT_PUBLIC_SUPABASE_URL"
+  },
+  "pm_tool": null,
+  "auto_invoke_skills": true,
+  "disabled_skills": [],
+  "claim_tasks": true,
+  "team": [
+    { "name": "leo", "full_name": "Leo Lee", "role": "backend" },
+    { "name": "daniel", "full_name": "Daniel", "role": "fullstack" },
+    { "name": "hailey", "full_name": "Hailey", "role": "frontend" },
+    { "name": "elliot", "full_name": "Elliot", "role": "frontend" }
+  ]
+}
