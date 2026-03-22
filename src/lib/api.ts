@@ -9,7 +9,6 @@ import type {
   ChatRequest,
   ChatResponse,
 } from './types';
-import type { PatientUiLanguage } from '@/lib/patient-languages';
 
 export async function translate(request: TranslationRequest): Promise<TranslationResponse> {
   const res = await fetch('/api/translate', {
@@ -86,13 +85,12 @@ export async function createSession(
 export async function joinSession(
   joinCode: string,
   patientName: string,
-  patientEmail: string,
-  patientLanguage: PatientUiLanguage
+  patientEmail: string
 ): Promise<{ visitId: string; patientLanguage: string; providerLanguage: string }> {
   const res = await fetch('/api/session/join', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ joinCode, patientName, patientEmail, patientLanguage }),
+    body: JSON.stringify({ joinCode, patientName, patientEmail }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -101,23 +99,6 @@ export async function joinSession(
     );
   }
   return res.json();
-}
-
-export async function updatePatientSessionLanguage(
-  visitId: string,
-  patientLanguage: PatientUiLanguage
-): Promise<void> {
-  const res = await fetch('/api/session/patient-language', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ visitId, patientLanguage }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(
-      typeof err.error === 'string' ? err.error : `Language update failed: ${res.statusText}`
-    );
-  }
 }
 
 export async function endSession(

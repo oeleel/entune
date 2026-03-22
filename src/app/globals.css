@@ -776,6 +776,15 @@
   max-width: min(100vw - 2rem, 280px);
 }
 
+@media (max-width: 480px) {
+  .entune-lang-switch {
+    position: static;
+    justify-content: center;
+    max-width: none;
+    margin: 1rem auto 0;
+  }
+}
+
 .entune-lang-btn {
   min-width: 2.5rem;
   padding: 8px 12px;

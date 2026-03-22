@@ -1,18 +1,15 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import type { SupportedLanguage } from '@/lib/types';
-import { isPatientUiLanguage } from '@/lib/patient-languages';
 
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
 
     const body = await request.json();
-    const { joinCode, patientName, patientEmail, patientLanguage } = body as {
+    const { joinCode, patientName, patientEmail } = body as {
       joinCode: string;
       patientName?: string;
       patientEmail?: string;
-      patientLanguage?: string;
     };
 
     if (!joinCode?.trim()) {
@@ -29,23 +26,14 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!patientLanguage || !isPatientUiLanguage(patientLanguage)) {
-      return NextResponse.json(
-        { error: 'A valid patient language is required' },
-        { status: 400 }
-      );
-    }
-
-    const langPatient = patientLanguage as SupportedLanguage;
-
     // Atomic update: only succeeds if join_code matches AND status is 'waiting'
+    // Patient language is already set by the doctor when creating the session
     const { data: visit, error: updateError } = await supabase
       .from('visits')
       .update({
         status: 'active',
         patient_name: patientName.trim(),
         patient_email: patientEmail.trim(),
-        language_patient: langPatient,
       })
       .eq('join_code', joinCode)
       .eq('status', 'waiting')
@@ -61,7 +49,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       visitId: visit.id,
-      patientLanguage: langPatient,
+      patientLanguage: visit.language_patient,
       providerLanguage: visit.language_provider,
     });
   } catch (error) {

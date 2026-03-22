@@ -8,9 +8,6 @@ import { SessionTopBar } from '@/components/visit/session-top-bar';
 import { TranscriptContainer } from '@/components/visit/transcript-container';
 import { TranscriptEntryCard } from '@/components/visit/transcript-entry';
 import { createClient } from '@/lib/supabase/client';
-import { updatePatientSessionLanguage } from '@/lib/api';
-import { PatientLanguageSelect } from '@/components/marketing/patient-language-select';
-import { toPatientUiLanguage, type PatientUiLanguage } from '@/lib/patient-languages';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DownloadPdfButton } from '@/components/shared/download-pdf-button';
@@ -25,7 +22,6 @@ function PatientSessionContent() {
   const [providerLang, setProviderLang] = useState<SupportedLanguage>('en-US');
   const [patientLang, setPatientLang] = useState<SupportedLanguage>('ko-KR');
   const [patientReport, setPatientReport] = useState<PatientReport | null>(null);
-  const [languageError, setLanguageError] = useState<string | null>(null);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
 
   const { status, error: statusError } = useSessionStatus(visitId);
@@ -49,35 +45,36 @@ function PatientSessionContent() {
       });
   }, [visitId]);
 
-  // Fetch patient report when session ends
+  // Fetch patient report when session ends (poll until available since reports generate async)
   useEffect(() => {
     if (status !== 'ended' || !visitId) return;
-    const supabase = createClient();
-    supabase
-      .from('visit_summaries')
-      .select('patient_report')
-      .eq('visit_id', visitId)
-      .single()
-      .then(({ data }) => {
-        if (data?.patient_report) {
-          setPatientReport(data.patient_report as PatientReport);
-        }
-      });
+
+    let cancelled = false;
+
+    async function fetchReport() {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('visit_summaries')
+        .select('patient_report')
+        .eq('visit_id', visitId)
+        .single();
+
+      if (cancelled) return;
+
+      if (data?.patient_report) {
+        setPatientReport(data.patient_report as PatientReport);
+      } else {
+        // Report not ready yet — retry in 2s
+        setTimeout(fetchReport, 2000);
+      }
+    }
+
+    fetchReport();
+
+    return () => { cancelled = true; };
   }, [status, visitId]);
 
-  async function handlePatientLanguageChange(next: PatientUiLanguage) {
-    setPatientLang(next);
-    setLanguageError(null);
-    if (!visitId || status === 'ended') return;
-    try {
-      await updatePatientSessionLanguage(visitId, next);
-    } catch (e) {
-      setLanguageError(e instanceof Error ? e.message : 'Could not update language');
-    }
-  }
-
   const connectionError = statusError || transcriptError;
-  const languageLocked = status === 'ended';
 
   if (!visitId) {
     return (
@@ -116,22 +113,6 @@ function PatientSessionContent() {
           </div>
         )}
 
-        {/* Language selector overlay */}
-        <div className="fixed top-12 right-4 z-30">
-          <div className="w-40">
-            <PatientLanguageSelect
-              id="sessionPatientLanguage"
-              label=""
-              value={toPatientUiLanguage(patientLang)}
-              onChange={handlePatientLanguageChange}
-              disabled={languageLocked}
-            />
-            {languageError && (
-              <p className="mt-1 text-xs text-destructive">{languageError}</p>
-            )}
-          </div>
-        </div>
-
         <div className="pt-12">
           <TranscriptContainer
             transcript={transcript}
@@ -161,15 +142,6 @@ function PatientSessionContent() {
                 label="Download PDF"
               />
             )}
-            <div className="w-40">
-              <PatientLanguageSelect
-                id="sessionPatientLanguageEnded"
-                label=""
-                value={toPatientUiLanguage(patientLang)}
-                onChange={handlePatientLanguageChange}
-                disabled={languageLocked}
-              />
-            </div>
           </div>
         </div>
       </header>

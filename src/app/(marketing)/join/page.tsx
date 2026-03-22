@@ -5,9 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { joinSession } from '@/lib/api';
-import type { PatientUiLanguage } from '@/lib/patient-languages';
 import { useI18n } from '@/components/providers/i18n-provider';
-import { PatientLanguageSelect } from '@/components/marketing/patient-language-select';
 
 export default function JoinPage() {
   const { t } = useI18n();
@@ -15,7 +13,6 @@ export default function JoinPage() {
   const [joinCode, setJoinCode] = useState('');
   const [patientName, setPatientName] = useState('');
   const [patientEmail, setPatientEmail] = useState('');
-  const [patientLanguage, setPatientLanguage] = useState<PatientUiLanguage>('ko-KR');
   const [error, setError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
 
@@ -30,8 +27,7 @@ export default function JoinPage() {
       const { visitId } = await joinSession(
         joinCode.trim(),
         patientName.trim(),
-        patientEmail.trim(),
-        patientLanguage
+        patientEmail.trim()
       );
       router.push(`/session/patient?visitId=${visitId}`);
     } catch (err) {
@@ -67,7 +63,7 @@ export default function JoinPage() {
               className="h-14 w-auto"
             />
             <span
-              className="text-4xl font-light tracking-[0.12em] lowercase text-[var(--entune-text)]"
+              className="text-4xl font-bold tracking-[0.08em] lowercase text-[var(--entune-text)]"
               style={{ fontFamily: 'var(--font-entune-display), ui-serif, Georgia, serif' }}
             >
               entune
@@ -118,12 +114,6 @@ export default function JoinPage() {
                 required
               />
             </div>
-
-            <PatientLanguageSelect
-              label={t('join.yourLanguage')}
-              value={patientLanguage}
-              onChange={setPatientLanguage}
-            />
 
             <button
               type="submit"

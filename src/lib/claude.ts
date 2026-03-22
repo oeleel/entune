@@ -176,6 +176,8 @@ RULES:
 1. If the text is in ${providerLangName}, keep it as textEnglish and translate to ${patientLangName} for textPatientLang (simplify medical jargon for the patient).
 2. If the text is in ${patientLangName}, keep it as textPatientLang and translate to English for textEnglish (preserve clinical precision for the provider).
 3. NEVER add medical advice or diagnosis. Only translate and flag cultural concepts.
+4. If the spoken text is unclear, garbled, or hard to understand, translate it as best you can using your best intuition of what was said. NEVER generate apology messages, error messages, or ask the speaker to repeat themselves. This is a live transcript — any meta-commentary like "I'm sorry, I didn't understand" would pollute the record. Always produce a best-effort translation or return the original text verbatim.
+5. NEVER include filler phrases like "Could you please repeat that?" or "I didn't catch that clearly" in either textEnglish or textPatientLang. Your output must ONLY contain the translated content.
 
 CULTURAL HEALTH CONCEPT DETECTION:
 Watch for these culturally specific health terms (including romanized forms): ${termsList}

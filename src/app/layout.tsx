@@ -29,6 +29,10 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: "Entune",
   description: "Real-time bilingual translation for healthcare visits",
+  icons: {
+    icon: "/LogoFr.png",
+    apple: "/LogoFr.png",
+  },
 };
 
 export default function RootLayout({

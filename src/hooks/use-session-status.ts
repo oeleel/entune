@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { SessionStatus } from '@/lib/types';
 
 export function useSessionStatus(visitId: string | null) {
   const [status, setStatus] = useState<SessionStatus>('waiting');
   const [error, setError] = useState<string | null>(null);
+  const statusRef = useRef<SessionStatus>('waiting');
 
   useEffect(() => {
     if (!visitId) return;
@@ -25,7 +26,9 @@ export function useSessionStatus(visitId: string | null) {
           return;
         }
         if (data) {
-          setStatus(data.status as SessionStatus);
+          const s = data.status as SessionStatus;
+          statusRef.current = s;
+          setStatus(s);
         }
       });
 
@@ -42,17 +45,34 @@ export function useSessionStatus(visitId: string | null) {
         },
         (payload) => {
           const newStatus = (payload.new as Record<string, unknown>).status as SessionStatus;
+          statusRef.current = newStatus;
           setStatus(newStatus);
         }
       )
-      .subscribe((status, err) => {
-        if (status === 'CHANNEL_ERROR') {
-          console.error('Session status realtime error:', { status, err });
+      .subscribe((subStatus, err) => {
+        if (subStatus === 'CHANNEL_ERROR') {
+          console.error('Session status realtime error:', { subStatus, err });
           setError(`Realtime connection error: ${err?.message || 'Check that Realtime is enabled for the visits table in Supabase Dashboard'}`);
         }
       });
 
+    // Polling fallback: check every 3s while session isn't ended
+    const interval = setInterval(async () => {
+      if (statusRef.current === 'ended') return;
+      const { data } = await supabase
+        .from('visits')
+        .select('status')
+        .eq('id', visitId)
+        .single();
+      if (data && data.status !== statusRef.current) {
+        const s = data.status as SessionStatus;
+        statusRef.current = s;
+        setStatus(s);
+      }
+    }, 3000);
+
     return () => {
+      clearInterval(interval);
       supabase.removeChannel(channel);
     };
   }, [visitId]);
