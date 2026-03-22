@@ -25,7 +25,6 @@ export function NavBar() {
         <Link
           href="/about"
           className="flex items-center gap-2 text-xl font-bold tracking-[0.08em] lowercase text-[var(--entune-text)] hover:text-[var(--entune-teal)] transition-colors"
-          style={{ fontFamily: 'var(--font-entune-display), ui-serif, Georgia, serif' }}
         >
           <Image
             src="/LogoFr.png"

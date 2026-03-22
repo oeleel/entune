@@ -64,7 +64,6 @@ export default function JoinPage() {
             />
             <span
               className="text-4xl font-bold tracking-[0.08em] lowercase text-[var(--entune-text)]"
-              style={{ fontFamily: 'var(--font-entune-display), ui-serif, Georgia, serif' }}
             >
               entune
             </span>
