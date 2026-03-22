@@ -77,6 +77,8 @@ export function TranscriptContainer({
         ref={containerRef}
         className="h-full overflow-y-auto px-6 py-4"
         style={{ scrollBehavior: 'smooth' }}
+        aria-live="polite"
+        aria-label="Live transcript"
       >
         {transcript.length === 0 && !interimText ? (
           <div className="flex items-center justify-center h-full">
@@ -113,7 +115,7 @@ export function TranscriptContainer({
       {showJump && transcript.length > 0 && (
         <button
           onClick={jumpToLatest}
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full px-4 py-2 shadow-lg text-sm flex items-center gap-1.5 animate-in fade-in duration-200"
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full px-5 py-2.5 shadow-lg text-sm flex items-center gap-1.5 animate-in fade-in duration-200 min-h-[44px]"
         >
           <ArrowDown className="w-3.5 h-3.5" />
           Jump to latest

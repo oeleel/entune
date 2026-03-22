@@ -37,7 +37,7 @@ export function SessionBottomBar({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-11 w-11"
           onClick={onTogglePause}
           aria-label={isPaused ? 'Resume listening' : 'Pause listening'}
         >
@@ -47,7 +47,7 @@ export function SessionBottomBar({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-11 w-11"
             onClick={onToggleVolume}
             aria-label="Toggle volume"
           >

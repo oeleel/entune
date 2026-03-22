@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import { ArrowLeftRight } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +28,18 @@ export function SessionTopBar({
   onEndVisit,
   isEnding,
 }: SessionTopBarProps) {
+  const [fontScale, setFontScale] = useState<'normal' | 'large'>('normal');
+
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      '--transcript-font-size',
+      fontScale === 'large' ? '1.25rem' : '1rem'
+    );
+    return () => {
+      document.documentElement.style.removeProperty('--transcript-font-size');
+    };
+  }, [fontScale]);
+
   return (
     <header className="fixed top-0 left-0 right-0 z-40 h-12 border-b bg-background flex items-center px-4 gap-3">
       {/* Logo */}
@@ -43,12 +58,22 @@ export function SessionTopBar({
         </Badge>
       </div>
 
-      {/* Right side — recording + end visit */}
-      <div className="flex items-center gap-3 shrink-0">
+      {/* Right side — font toggle + recording + end visit */}
+      <div className="flex items-center gap-2 shrink-0">
+        {/* Font size toggle */}
+        <button
+          onClick={() => setFontScale((s) => (s === 'normal' ? 'large' : 'normal'))}
+          className="h-8 min-w-[44px] px-2 rounded-md border text-xs font-medium hover:bg-muted transition-colors"
+          aria-label={fontScale === 'normal' ? 'Increase font size' : 'Decrease font size'}
+          title={fontScale === 'normal' ? 'Increase font size' : 'Decrease font size'}
+        >
+          {fontScale === 'normal' ? 'A+' : 'A'}
+        </button>
+
         {isRecording && (
           <span className="flex items-center gap-1.5 text-xs text-red-500">
             <span className="recording-dot inline-block w-2 h-2 rounded-full bg-red-500" />
-            Recording
+            <span className="hidden sm:inline">Recording</span>
           </span>
         )}
         {onEndVisit && (
@@ -57,7 +82,7 @@ export function SessionTopBar({
             size="sm"
             onClick={onEndVisit}
             disabled={isEnding}
-            className="text-xs h-7"
+            className="text-xs h-8 min-w-[44px]"
           >
             {isEnding ? 'Ending...' : 'End Visit'}
           </Button>

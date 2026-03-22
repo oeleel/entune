@@ -1106,7 +1106,7 @@
 /* —— Entune Design System: Custom Classes —— */
 
 .transcript-text {
-  font-size: 22px;
+  font-size: var(--transcript-font-size, 22px);
   font-weight: 400;
   line-height: 1.7;
 }
@@ -1138,6 +1138,25 @@
   50% {
     opacity: 0.5;
     transform: scale(1.15);
+  }
+}
+
+/* Sidebar responsive: icon-only at tablet (md), full at desktop (lg) */
+@media (min-width: 768px) {
+  .sidebar-label {
+    display: none;
+  }
+  .sidebar-collapsed-label {
+    display: inline;
+  }
+}
+
+@media (min-width: 1024px) {
+  .sidebar-label {
+    display: revert;
+  }
+  .sidebar-collapsed-label {
+    display: none;
   }
 }
 
