@@ -34,8 +34,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Visit not found' }, { status: 404 });
     }
 
+    // Idempotent: if already ended, return existing reports
     if (visit.status === 'ended') {
-      return NextResponse.json({ error: 'Visit already ended' }, { status: 409 });
+      const { data: existing } = await supabase
+        .from('visit_summaries')
+        .select('doctor_report, patient_report')
+        .eq('visit_id', visitId)
+        .single();
+
+      if (existing?.doctor_report && existing?.patient_report) {
+        return NextResponse.json({
+          doctorReport: existing.doctor_report,
+          patientReport: existing.patient_report,
+        });
+      }
+      // Reports missing — fall through to regenerate
     }
 
     // End the visit
