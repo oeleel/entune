@@ -46,7 +46,6 @@ describe('Design Foundation — Color System', () => {
     expect(css).toMatch(/--entune-amber-500\s*:\s*32\s+90%\s+45%/);
     expect(css).toMatch(/--entune-red-500\s*:\s*0\s+72%\s+50%/);
     expect(css).toMatch(/--entune-slate-500\s*:\s*210\s+18%\s+50%/);
-    expect(css).toMatch(/--entune-slate-500\s*:\s*210\s+18%\s+50%/);
   });
 
   it('should map --primary to teal (not default gray)', () => {
