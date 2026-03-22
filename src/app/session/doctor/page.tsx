@@ -4,23 +4,16 @@ import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AuthGuard } from '@/components/shared/auth-guard';
 import { CulturalFlagCard } from '@/components/visit/cultural-flag-card';
+import { SessionTopBar } from '@/components/visit/session-top-bar';
+import { TranscriptContainer } from '@/components/visit/transcript-container';
 import { useSessionStatus } from '@/hooks/use-session-status';
 import { useRealtimeTranscript } from '@/hooks/use-realtime-transcript';
 import { useDeepgramTranscript } from '@/hooks/use-deepgram-transcript';
-import { useAutoScroll } from '@/hooks/use-auto-scroll';
 import { createClient } from '@/lib/supabase/client';
 import { endSession } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardContent } from '@/components/ui/card';
 import type { SupportedLanguage, CulturalFlag } from '@/lib/types';
-
-const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
-  'en-US': 'English',
-  'ko-KR': '한국어',
-  'es-ES': 'Español',
-};
 
 function DoctorSessionContent() {
   const router = useRouter();
@@ -46,8 +39,6 @@ function DoctorSessionContent() {
 
   const processedIndexRef = useRef(0);
   const startedRef = useRef(false);
-
-  const { containerRef, showButton, scrollToBottom } = useAutoScroll([realtimeTranscript, interimText]);
 
   // Fetch visit details on mount
   useEffect(() => {
@@ -127,166 +118,74 @@ function DoctorSessionContent() {
     .map((e) => e.culturalFlag)
     .filter((f): f is CulturalFlag => f !== null);
 
-  return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Entune</h1>
-              <p className="text-sm text-muted-foreground">Doctor Session</p>
-            </div>
-            {status === 'active' && (
-              <Badge variant={isConnected ? 'default' : 'secondary'} className="gap-1.5">
-                <span
-                  className={`inline-block w-2 h-2 rounded-full ${
-                    isConnected ? 'bg-green-400 animate-pulse' : 'bg-gray-400'
-                  }`}
-                />
-                {isConnected ? 'Listening' : deepgramError ? 'Error' : 'Connecting...'}
-              </Badge>
-            )}
-          </div>
-          {status === 'active' && (
-            <Button
-              variant="destructive"
-              onClick={handleEndSession}
-              disabled={isEnding}
-            >
-              {isEnding ? 'Ending...' : 'End Session'}
-            </Button>
-          )}
-          {status === 'ended' && (
-            <Button variant="outline" onClick={() => router.push('/dashboard')}>
+  // Waiting for patient
+  if (status === 'waiting') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <Card className="w-full max-w-sm">
+          <CardContent className="py-16 text-center space-y-4">
+            <p className="text-muted-foreground">Waiting for patient to join...</p>
+            <p className="text-5xl font-mono font-bold tracking-[0.3em] text-primary">
+              {joinCode}
+            </p>
+            <p className="text-sm text-muted-foreground">Share this code with the patient</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Session ended
+  if (status === 'ended') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <Card className="w-full max-w-sm">
+          <CardContent className="py-16 text-center space-y-4">
+            <p className="text-muted-foreground">Session has ended.</p>
+            <Button onClick={() => router.push('/dashboard')}>
               Back to Dashboard
             </Button>
-          )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Active session
+  return (
+    <div className="min-h-screen bg-background">
+      <SessionTopBar
+        patientLanguage={patientLang}
+        providerLanguage={providerLang}
+        isRecording={isConnected}
+        onEndVisit={handleEndSession}
+        isEnding={isEnding}
+      />
+
+      {connectionError && (
+        <div className="fixed top-12 left-0 right-0 z-30 bg-destructive/10 border-b border-destructive/30 px-6 py-2 text-destructive text-sm text-center">
+          {connectionError}
         </div>
-      </header>
+      )}
 
-      <main className="max-w-4xl mx-auto px-6 py-8">
-        {connectionError && (
-          <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-6 text-destructive text-sm">
-            {connectionError}
-          </div>
-        )}
+      <div className="pt-12">
+        <TranscriptContainer
+          transcript={realtimeTranscript}
+          patientLanguage={patientLang}
+          providerLanguage={providerLang}
+          emptyMessage="Listening... speak naturally."
+          interimText={interimText}
+        />
+      </div>
 
-        {/* Waiting for patient */}
-        {status === 'waiting' && (
-          <Card>
-            <CardContent className="py-16 text-center space-y-4">
-              <p className="text-muted-foreground">Waiting for patient to join...</p>
-              <p className="text-5xl font-mono font-bold tracking-[0.3em] text-primary">
-                {joinCode}
-              </p>
-              <p className="text-sm text-muted-foreground">Share this code with the patient</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Active session — ambient scribe */}
-        {status === 'active' && (
-          <div className="space-y-6">
-            {/* Status bar */}
-            <div className="flex items-center gap-3">
-              <Badge variant="default">Ambient Scribe</Badge>
-              <span className="text-xs text-muted-foreground">
-                English / {LANGUAGE_LABELS[patientLang]}
-              </span>
-              {interimText && (
-                <span className="text-sm text-muted-foreground italic truncate flex-1">
-                  {interimText}
-                </span>
-              )}
-            </div>
-
-            {/* Live transcript from Supabase realtime */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Live Transcript</CardTitle>
-              </CardHeader>
-              <CardContent className="relative">
-                <div ref={containerRef}>
-                <ScrollArea className="h-[60vh]">
-                  <div>
-                    {realtimeTranscript.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-8 text-center">
-                        Listening... speak naturally.
-                      </p>
-                    ) : (
-                      <div className="space-y-3">
-                        {realtimeTranscript.map((entry, i) => (
-                          <div
-                            key={i}
-                            className="rounded-lg p-3 bg-muted/40"
-                          >
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs text-muted-foreground">
-                                {new Date(entry.timestamp).toLocaleTimeString()}
-                              </span>
-                            </div>
-                            <p className="text-sm">{entry.textEnglish}</p>
-                            {entry.textEnglish !== entry.textPatientLang && (
-                              <p className="text-sm text-muted-foreground mt-1">
-                                &rarr; {entry.textPatientLang}
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                        {/* Interim text — currently speaking */}
-                        {interimText && (
-                          <div className="rounded-lg p-3 bg-muted/30 border border-dashed border-muted-foreground/20">
-                            <p className="text-sm text-muted-foreground italic">
-                              {interimText}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-                </div>
-                {showButton && realtimeTranscript.length > 0 && (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="absolute bottom-2 left-1/2 -translate-x-1/2 shadow-md"
-                    onClick={scrollToBottom}
-                  >
-                    Scroll to latest
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Cultural flags */}
-            {culturalFlags.length > 0 && (
-              <Card className="border-amber-200 dark:border-amber-800">
-                <CardHeader>
-                  <CardTitle className="text-base">Cultural Flags</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {culturalFlags.map((flag, i) => (
-                    <CulturalFlagCard key={i} flag={flag} />
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        )}
-
-        {/* Session ended */}
-        {status === 'ended' && (
-          <Card>
-            <CardContent className="py-16 text-center space-y-4">
-              <p className="text-muted-foreground">Session has ended.</p>
-              <Button onClick={() => router.push('/dashboard')}>
-                Back to Dashboard
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-      </main>
+      {/* Cultural flags overlay */}
+      {culturalFlags.length > 0 && (
+        <div className="fixed bottom-4 right-4 z-30 w-80 space-y-2">
+          {culturalFlags.slice(-2).map((flag, i) => (
+            <CulturalFlagCard key={i} flag={flag} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
