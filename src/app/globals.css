@@ -133,14 +133,23 @@
 .entune-marketing {
   --entune-teal: #87d3da;
   --entune-red: #d17979;
-  --entune-bg: #0b1a2b;
-  --entune-bg2: #0f2236;
+  --entune-bg: #081420;
+  --entune-bg2: #0c1c2e;
+  --entune-page-gradient: linear-gradient(
+    165deg,
+    #020508 0%,
+    #051018 28%,
+    #081420 52%,
+    #0c2236 78%,
+    #030a12 100%
+  );
   --entune-text: #e8f0f2;
   --entune-text-mid: #8ba4b8;
   --entune-text-dim: #4a6577;
   --entune-border: rgba(255, 255, 255, 0.06);
 
-  background: var(--entune-bg);
+  background: var(--entune-page-gradient);
+  background-color: var(--entune-bg);
   color: var(--entune-text);
   font-family: var(--font-entune-sans), ui-sans-serif, system-ui, sans-serif;
 }
@@ -704,14 +713,23 @@
 .entune-doctor-desktop {
   --entune-teal: #87d3da;
   --entune-red: #d17979;
-  --entune-bg: #0b1a2b;
-  --entune-bg2: #0f2236;
+  --entune-bg: #081420;
+  --entune-bg2: #0c1c2e;
+  --entune-page-gradient: linear-gradient(
+    165deg,
+    #020508 0%,
+    #051018 28%,
+    #081420 52%,
+    #0c2236 78%,
+    #030a12 100%
+  );
   --entune-text: #e8f0f2;
   --entune-text-mid: #8ba4b8;
   --entune-text-dim: #4a6577;
   --entune-border: rgba(255, 255, 255, 0.06);
 
-  background: var(--entune-bg);
+  background: var(--entune-page-gradient);
+  background-color: var(--entune-bg);
   color: var(--entune-text);
   font-family: var(--font-entune-sans), ui-sans-serif, system-ui, sans-serif;
 }
