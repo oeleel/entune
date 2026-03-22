@@ -57,29 +57,13 @@ function VisitContent() {
 
         {/* Transcript + Cultural Flags */}
         <div className="grid grid-cols-3 gap-6">
-          {/* Provider Side */}
-          <Card className="col-span-1">
+          {/* Bilingual Transcript */}
+          <Card className="col-span-2">
             <CardHeader>
-              <CardTitle className="text-sm">Provider (English)</CardTitle>
+              <CardTitle className="text-sm">Bilingual Transcript</CardTitle>
             </CardHeader>
             <CardContent>
-              <TranscriptDisplay
-                entries={placeholderEntries.filter((e) => e.speaker === 'provider')}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Patient Side */}
-          <Card className="col-span-1">
-            <CardHeader>
-              <CardTitle className="text-sm">
-                Patient ({patientLanguage})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <TranscriptDisplay
-                entries={placeholderEntries.filter((e) => e.speaker === 'patient')}
-              />
+              <TranscriptDisplay entries={placeholderEntries} />
             </CardContent>
           </Card>
 

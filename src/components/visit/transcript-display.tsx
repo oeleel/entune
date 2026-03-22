@@ -18,19 +18,14 @@ export function TranscriptDisplay({ entries }: { entries: TranscriptEntry[] }) {
         {entries.map((entry, i) => (
           <div
             key={i}
-            className={`rounded-lg p-3 ${
-              entry.speaker === 'provider'
-                ? 'bg-blue-50 border-l-4 border-blue-500'
-                : 'bg-green-50 border-l-4 border-green-500'
-            }`}
+            className="rounded-lg p-3 bg-muted/40"
           >
-            <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">
-              {entry.speaker}
-            </div>
-            <div className="text-sm">{entry.originalText}</div>
-            <div className="text-sm text-muted-foreground mt-1">
-              → {entry.translatedText}
-            </div>
+            <div className="text-sm">{entry.textEnglish}</div>
+            {entry.textEnglish !== entry.textPatientLang && (
+              <div className="text-sm text-muted-foreground mt-1">
+                &rarr; {entry.textPatientLang}
+              </div>
+            )}
           </div>
         ))}
       </div>

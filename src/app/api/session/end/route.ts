@@ -75,8 +75,8 @@ export async function POST(request: Request) {
     }
 
     const transcript: TranscriptEntry[] = (entries || []).map((e) => ({
-      originalText: e.original_text,
-      translatedText: e.translated_text,
+      textEnglish: e.original_text,
+      textPatientLang: e.translated_text,
       speaker: e.speaker as 'patient' | 'provider',
       culturalFlag: e.cultural_flag as CulturalFlag | null,
       audioUrl: null,

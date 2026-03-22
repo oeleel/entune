@@ -15,6 +15,12 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { SupportedLanguage, CulturalFlag } from '@/lib/types';
 
+const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
+  'en-US': 'English',
+  'ko-KR': '한국어',
+  'es-ES': 'Español',
+};
+
 function DoctorSessionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -67,7 +73,7 @@ function DoctorSessionContent() {
     }
   }, [status, startListening]);
 
-  // Process new Deepgram entries → send to /api/session/transcript (tagged as provider)
+  // Process new Deepgram entries → send to /api/session/transcript
   useEffect(() => {
     if (!visitId || status !== 'active') return;
 
@@ -85,7 +91,6 @@ function DoctorSessionContent() {
         body: JSON.stringify({
           visitId,
           text: entry.text,
-          speaker: 'provider',
           detectedLanguage: entry.detectedLanguage,
         }),
       }).catch((err) => console.error('Transcript submit error:', err));
@@ -191,7 +196,7 @@ function DoctorSessionContent() {
             <div className="flex items-center gap-3">
               <Badge variant="default">Ambient Scribe</Badge>
               <span className="text-xs text-muted-foreground">
-                {providerLang} / {patientLang}
+                English / {LANGUAGE_LABELS[patientLang]}
               </span>
               {interimText && (
                 <span className="text-sm text-muted-foreground italic truncate flex-1">
@@ -217,31 +222,17 @@ function DoctorSessionContent() {
                         {realtimeTranscript.map((entry, i) => (
                           <div
                             key={i}
-                            className={`rounded-lg p-3 ${
-                              entry.speaker === 'provider'
-                                ? 'bg-blue-50 dark:bg-blue-950/30'
-                                : 'bg-amber-50 dark:bg-amber-950/30'
-                            }`}
+                            className="rounded-lg p-3 bg-muted/40"
                           >
                             <div className="flex items-center gap-2 mb-1">
-                              <Badge
-                                variant="outline"
-                                className={`text-xs ${
-                                  entry.speaker === 'provider'
-                                    ? 'border-blue-300 text-blue-700 dark:text-blue-300'
-                                    : 'border-amber-300 text-amber-700 dark:text-amber-300'
-                                }`}
-                              >
-                                {entry.speaker === 'provider' ? 'Doctor' : 'Patient'}
-                              </Badge>
                               <span className="text-xs text-muted-foreground">
                                 {new Date(entry.timestamp).toLocaleTimeString()}
                               </span>
                             </div>
-                            <p className="text-sm">{entry.originalText}</p>
-                            {entry.originalText !== entry.translatedText && (
+                            <p className="text-sm">{entry.textEnglish}</p>
+                            {entry.textEnglish !== entry.textPatientLang && (
                               <p className="text-sm text-muted-foreground mt-1">
-                                &rarr; {entry.translatedText}
+                                &rarr; {entry.textPatientLang}
                               </p>
                             )}
                           </div>

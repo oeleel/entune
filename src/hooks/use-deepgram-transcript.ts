@@ -48,22 +48,6 @@ export function createTranscriptEntry(result: DeepgramResult): DeepgramEntry {
   };
 }
 
-/**
- * Determines speaker role from Deepgram's detected language.
- * If the detected language matches the patient's language → patient.
- * Everything else → provider (default).
- */
-export function detectSpeakerRole(
-  detectedLanguage: string | undefined,
-  providerLang: string,
-  patientLang: string
-): 'provider' | 'patient' {
-  if (!detectedLanguage) return 'provider';
-  const patientBase = patientLang.split('-')[0]; // 'ko', 'es'
-  if (detectedLanguage.startsWith(patientBase)) return 'patient';
-  return 'provider';
-}
-
 // --- Hook ---
 
 export function useDeepgramTranscript(visitId?: string | null) {

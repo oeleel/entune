@@ -131,6 +131,99 @@ Respond ONLY with valid JSON, no markdown, no explanation:
   };
 }
 
+export async function translateBilingual(
+  text: string,
+  detectedLanguage: SupportedLanguage,
+  providerLang: SupportedLanguage,
+  patientLang: SupportedLanguage
+): Promise<{ textEnglish: string; textPatientLang: string; culturalFlag: CulturalFlag | null }> {
+  // If provider and patient speak the same language, no translation needed
+  if (providerLang === patientLang) {
+    return { textEnglish: text, textPatientLang: text, culturalFlag: null };
+  }
+
+  const detectedName = LANGUAGE_NAMES[detectedLanguage];
+  const patientLangName = LANGUAGE_NAMES[patientLang];
+  const terms = getTermsList(detectedLanguage);
+  const glossaryEntries = getGlossaryByLanguage(detectedLanguage);
+
+  const termsList = terms.length > 0
+    ? terms.join(', ')
+    : 'No specific cultural terms registered for this language, but still watch for cultural health concepts.';
+
+  const glossaryContext = glossaryEntries.length > 0
+    ? glossaryEntries.map(e =>
+      `- ${e.term} (${e.literal}): ${e.clinicalContext}`
+    ).join('\n')
+    : '';
+
+  const systemPrompt = `You are a medical interpreter in a healthcare visit between an English-speaking provider and a ${patientLangName}-speaking patient. Both are in the same room and a single microphone captures all speech.
+
+TASK:
+Given spoken text (detected as ${detectedName}), produce BOTH an English version and a ${patientLangName} version.
+
+RULES:
+1. If the text is in English, keep it as textEnglish and translate to ${patientLangName} for textPatientLang (simplify medical jargon for the patient).
+2. If the text is in ${patientLangName}, keep it as textPatientLang and translate to English for textEnglish (preserve clinical precision for the provider).
+3. NEVER add medical advice or diagnosis. Only translate and flag cultural concepts.
+
+CULTURAL HEALTH CONCEPT DETECTION:
+Watch for these culturally specific health terms: ${termsList}
+
+${glossaryContext ? `GLOSSARY REFERENCE:\n${glossaryContext}\n` : ''}
+When you detect a cultural health concept, return a cultural_flag object.
+
+Respond ONLY with valid JSON, no markdown:
+{
+  "textEnglish": "English version",
+  "textPatientLang": "${patientLangName} version",
+  "culturalFlag": null | {
+    "term": "the original cultural term detected",
+    "literal": "literal English translation",
+    "clinicalContext": "brief clinical explanation for the provider",
+    "screenFor": ["condition1", "condition2"],
+    "safetyNote": null | "safety concern if any"
+  }
+}`;
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 1024,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: `Spoken text: "${text}"` }],
+  });
+
+  const content = response.content[0];
+  if (content.type !== 'text') {
+    throw new Error('Unexpected response type from Claude');
+  }
+
+  const parsed = parseClaudeJSON<{
+    textEnglish: string;
+    textPatientLang: string;
+    culturalFlag: {
+      term: string;
+      literal: string;
+      clinicalContext: string;
+      screenFor: string[];
+      safetyNote: string | null;
+    } | null;
+  }>(content.text);
+
+  const culturalFlag: CulturalFlag | null = parsed.culturalFlag
+    ? {
+        ...parsed.culturalFlag,
+        originalLanguage: detectedLanguage,
+      }
+    : null;
+
+  return {
+    textEnglish: parsed.textEnglish,
+    textPatientLang: parsed.textPatientLang,
+    culturalFlag,
+  };
+}
+
 export async function generateSummary(
   visitId: string,
   transcript: TranscriptEntry[],
@@ -142,7 +235,7 @@ export async function generateSummary(
   const transcriptText = transcript
     .map(
       (entry) =>
-        `[${entry.speaker.toUpperCase()}] (${LANGUAGE_NAMES[entry.culturalFlag?.originalLanguage || languagePair.patient]}): ${entry.originalText}\n→ Translation: ${entry.translatedText}${entry.culturalFlag ? `\n⚠ Cultural flag: ${entry.culturalFlag.term} — ${entry.culturalFlag.clinicalContext}` : ''}`
+        `[English]: ${entry.textEnglish}\n→ [${LANGUAGE_NAMES[languagePair.patient]}]: ${entry.textPatientLang}${entry.culturalFlag ? `\n⚠ Cultural flag: ${entry.culturalFlag.term} — ${entry.culturalFlag.clinicalContext}` : ''}`
     )
     .join('\n\n');
 
@@ -262,7 +355,7 @@ export async function generateDoctorReport(
   const transcriptText = transcript
     .map(
       (e) =>
-        `[${e.speaker.toUpperCase()}] ${e.originalText}\n→ ${e.translatedText}`
+        `[English] ${e.textEnglish}\n→ ${e.textPatientLang}`
     )
     .join('\n\n');
 
@@ -324,7 +417,7 @@ export async function generatePatientReport(
   const transcriptText = transcript
     .map(
       (e) =>
-        `[${e.speaker.toUpperCase()}] ${e.originalText}\n→ ${e.translatedText}`
+        `[English] ${e.textEnglish}\n→ ${e.textPatientLang}`
     )
     .join('\n\n');
 

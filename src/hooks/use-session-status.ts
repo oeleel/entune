@@ -47,7 +47,8 @@ export function useSessionStatus(visitId: string | null) {
       )
       .subscribe((status, err) => {
         if (status === 'CHANNEL_ERROR') {
-          setError(`Realtime connection error: ${err?.message || 'unknown'}`);
+          console.error('Session status realtime error:', { status, err });
+          setError(`Realtime connection error: ${err?.message || 'Check that Realtime is enabled for the visits table in Supabase Dashboard'}`);
         }
       });
 

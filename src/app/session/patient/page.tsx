@@ -4,7 +4,6 @@ import { Suspense, useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRealtimeTranscript } from '@/hooks/use-realtime-transcript';
 import { useSessionStatus } from '@/hooks/use-session-status';
-import { useDeepgramTranscript } from '@/hooks/use-deepgram-transcript';
 import { createClient } from '@/lib/supabase/client';
 import { updatePatientSessionLanguage } from '@/lib/api';
 import { PatientLanguageSelect } from '@/components/marketing/patient-language-select';
@@ -12,32 +11,26 @@ import { toPatientUiLanguage, type PatientUiLanguage } from '@/lib/patient-langu
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import type { SupportedLanguage, PatientReport } from '@/lib/types';
+
+const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
+  'en-US': 'English',
+  'ko-KR': '한국어',
+  'es-ES': 'Español',
+};
 
 function PatientSessionContent() {
   const searchParams = useSearchParams();
   const visitId = searchParams.get('visitId');
 
   const [patientLang, setPatientLang] = useState<SupportedLanguage>('ko-KR');
-  const [providerLang, setProviderLang] = useState<SupportedLanguage>('en-US');
   const [patientReport, setPatientReport] = useState<PatientReport | null>(null);
   const [languageError, setLanguageError] = useState<string | null>(null);
 
   const { status, error: statusError } = useSessionStatus(visitId);
   const { transcript, error: transcriptError } = useRealtimeTranscript(visitId);
-  const {
-    transcript: deepgramEntries,
-    interimText,
-    isConnected,
-    error: deepgramError,
-    startListening,
-    stopListening,
-  } = useDeepgramTranscript(visitId);
 
-  const processedIndexRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const startedRef = useRef(false);
 
   // Fetch visit details on mount
   useEffect(() => {
@@ -52,46 +45,9 @@ function PatientSessionContent() {
         if (data) {
           const p = data.language_patient as SupportedLanguage;
           setPatientLang((p === 'es-ES' ? 'es-ES' : 'ko-KR') as SupportedLanguage);
-          setProviderLang(data.language_provider as SupportedLanguage);
         }
       });
   }, [visitId]);
-
-  // Auto-start Deepgram when session is active
-  useEffect(() => {
-    if (status === 'active' && !startedRef.current) {
-      startedRef.current = true;
-      startListening();
-    }
-    if (status === 'ended' && startedRef.current) {
-      stopListening();
-    }
-  }, [status, startListening, stopListening]);
-
-  // Process new Deepgram entries → send to /api/session/transcript (tagged as patient)
-  useEffect(() => {
-    if (!visitId || status !== 'active') return;
-
-    const newEntries = deepgramEntries.slice(processedIndexRef.current);
-    if (newEntries.length === 0) return;
-
-    processedIndexRef.current = deepgramEntries.length;
-
-    for (const entry of newEntries) {
-      if (!entry.isFinal || !entry.text.trim()) continue;
-
-      fetch('/api/session/transcript', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          visitId,
-          text: entry.text,
-          speaker: 'patient',
-          detectedLanguage: entry.detectedLanguage,
-        }),
-      }).catch((err) => console.error('Transcript submit error:', err));
-    }
-  }, [deepgramEntries, visitId, status]);
 
   // Fetch patient report when session ends
   useEffect(() => {
@@ -114,7 +70,7 @@ function PatientSessionContent() {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
-  }, [transcript, interimText]);
+  }, [transcript]);
 
   async function handlePatientLanguageChange(next: PatientUiLanguage) {
     setPatientLang(next);
@@ -127,8 +83,7 @@ function PatientSessionContent() {
     }
   }
 
-  const providerMessages = transcript.filter((t) => t.speaker === 'provider');
-  const connectionError = statusError || transcriptError || deepgramError;
+  const connectionError = statusError || transcriptError;
   const languageLocked = status === 'ended';
 
   if (!visitId) {
@@ -160,18 +115,14 @@ function PatientSessionContent() {
                 <p className="mt-1 text-xs text-destructive">{languageError}</p>
               )}
             </div>
-            <Badge variant={isConnected ? 'default' : status === 'active' ? 'secondary' : 'outline'} className="gap-1.5">
+            <Badge variant={status === 'active' ? 'default' : 'outline'} className="gap-1.5">
               {status === 'active' && (
-                <span
-                  className={`inline-block w-2 h-2 rounded-full ${
-                    isConnected ? 'bg-green-400 animate-pulse' : 'bg-gray-400'
-                  }`}
-                />
+                <span className="inline-block w-2 h-2 rounded-full bg-green-400 animate-pulse" />
               )}
               {status === 'waiting'
                 ? 'Connecting...'
                 : status === 'active'
-                  ? isConnected ? 'Listening' : 'Connecting...'
+                  ? 'Live'
                   : 'Ended'}
             </Badge>
           </div>
@@ -194,64 +145,43 @@ function PatientSessionContent() {
           </Card>
         )}
 
-        {/* Active session */}
+        {/* Active session — read-only bilingual transcript */}
         {status === 'active' && (
-          <div className="space-y-6">
-            {/* Doctor subtitles */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Doctor is speaking</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="max-h-[300px]">
-                  <div>
-                    {providerMessages.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-8 text-center">
-                        Waiting for doctor to speak...
-                      </p>
-                    ) : (
-                      <div className="space-y-3">
-                        {providerMessages.map((entry, i) => (
-                          <div key={i} className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3">
-                            <p className="text-sm">{entry.translatedText}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div ref={scrollRef} />
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-
-            <Separator />
-
-            {/* Ambient mic status */}
-            <div className="text-center py-4">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50">
-                {isConnected ? (
-                  <>
-                    <span className="h-3 w-3 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-sm text-muted-foreground">
-                      Your microphone is active — speak naturally
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span className="h-3 w-3 rounded-full bg-gray-400" />
-                    <span className="text-sm text-muted-foreground">
-                      Connecting microphone...
-                    </span>
-                  </>
-                )}
-              </div>
-              {interimText && (
-                <p className="mt-2 text-sm text-muted-foreground italic">
-                  {interimText}
-                </p>
-              )}
-            </div>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">
+                Live Transcript
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                {LANGUAGE_LABELS[patientLang]} / English
+              </p>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="max-h-[500px]">
+                <div>
+                  {transcript.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-8 text-center">
+                      Waiting for conversation to begin...
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {transcript.map((entry, i) => (
+                        <div key={i} className="rounded-lg p-3 bg-muted/40">
+                          <p className="text-sm font-medium">{entry.textPatientLang}</p>
+                          {entry.textEnglish !== entry.textPatientLang && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {entry.textEnglish}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div ref={scrollRef} />
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
         )}
 
         {/* Session ended */}

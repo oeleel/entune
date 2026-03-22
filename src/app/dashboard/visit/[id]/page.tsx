@@ -361,23 +361,12 @@ function VisitDetailContent() {
                   <ScrollArea className="max-h-[500px]">
                     <div className="space-y-4">
                       {transcript.map((entry) => {
-                        // Provider spoke in provider language (original) → translated to patient language
-                        // Patient spoke in patient language (original) → translated to provider language (English)
-                        const isProvider = entry.speaker === 'provider';
-                        const englishText = isProvider ? entry.original_text : entry.translated_text;
-                        const foreignText = isProvider ? entry.translated_text : entry.original_text;
-                        const foreignLang = isProvider
-                          ? LANGUAGE_LABELS[visit.language_patient] || visit.language_patient
-                          : LANGUAGE_LABELS[visit.language_patient] || visit.language_patient;
+                        // original_text = English, translated_text = patient language
+                        const patientLangLabel = LANGUAGE_LABELS[visit.language_patient] || visit.language_patient;
 
                         return (
                           <div key={entry.id} className="border-b pb-3 last:border-b-0 last:pb-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className={`text-xs font-semibold uppercase ${
-                                isProvider ? 'text-primary' : 'text-amber-600'
-                              }`}>
-                                {isProvider ? 'Provider' : 'Patient'}
-                              </span>
                               <span className="text-xs text-muted-foreground">
                                 {new Date(entry.timestamp).toLocaleTimeString('en-US', {
                                   hour: 'numeric',
@@ -386,10 +375,10 @@ function VisitDetailContent() {
                                 })}
                               </span>
                             </div>
-                            <p className="text-sm">{englishText}</p>
-                            {!isProvider && (
+                            <p className="text-sm">{entry.original_text}</p>
+                            {entry.original_text !== entry.translated_text && (
                               <p className="text-xs text-muted-foreground mt-1 italic">
-                                Original ({foreignLang}): {foreignText}
+                                {patientLangLabel}: {entry.translated_text}
                               </p>
                             )}
                           </div>

@@ -31,7 +31,14 @@ export type TranslationResponse = {
   timestamp: string;
 };
 
-export type TranscriptEntry = TranslationResponse;
+export type TranscriptEntry = {
+  textEnglish: string;
+  textPatientLang: string;
+  culturalFlag: CulturalFlag | null;
+  audioUrl: string | null;
+  timestamp: string;
+  speaker?: 'patient' | 'provider'; // kept for backward compat with report generation
+};
 
 export type VisitSession = {
   id: string;

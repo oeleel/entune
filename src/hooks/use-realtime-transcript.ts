@@ -27,9 +27,8 @@ export function useRealtimeTranscript(visitId: string | null) {
         if (data) {
           setTranscript(
             data.map((e) => ({
-              originalText: e.original_text,
-              translatedText: e.translated_text,
-              speaker: e.speaker as 'patient' | 'provider',
+              textEnglish: e.original_text,
+              textPatientLang: e.translated_text,
               culturalFlag: e.cultural_flag as CulturalFlag | null,
               audioUrl: null,
               timestamp: e.timestamp,
@@ -52,9 +51,8 @@ export function useRealtimeTranscript(visitId: string | null) {
         (payload) => {
           const e = payload.new as Record<string, unknown>;
           const entry: TranscriptEntry = {
-            originalText: e.original_text as string,
-            translatedText: e.translated_text as string,
-            speaker: e.speaker as 'patient' | 'provider',
+            textEnglish: e.original_text as string,
+            textPatientLang: e.translated_text as string,
             culturalFlag: e.cultural_flag as CulturalFlag | null,
             audioUrl: null,
             timestamp: e.timestamp as string,
@@ -64,7 +62,8 @@ export function useRealtimeTranscript(visitId: string | null) {
       )
       .subscribe((status, err) => {
         if (status === 'CHANNEL_ERROR') {
-          setError(`Realtime connection error: ${err?.message || 'unknown'}`);
+          console.error('Transcript realtime error:', { status, err });
+          setError(`Realtime connection error: ${err?.message || 'Check that Realtime is enabled for the transcript_entries table in Supabase Dashboard'}`);
         }
       });
 

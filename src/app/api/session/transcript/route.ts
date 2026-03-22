@@ -1,18 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { translateWithContext } from '@/lib/claude';
+import { translateBilingual } from '@/lib/claude';
 import type { SupportedLanguage } from '@/lib/types';
 
 export async function POST(request: Request) {
   try {
-    const { visitId, text, speaker, detectedLanguage } = await request.json();
+    const { visitId, text, detectedLanguage } = await request.json();
 
-    if (!visitId || !text?.trim() || !speaker) {
+    if (!visitId || !text?.trim()) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    if (!['provider', 'patient'].includes(speaker)) {
-      return NextResponse.json({ error: 'Invalid speaker' }, { status: 400 });
     }
 
     const supabase = createAdminClient();
@@ -36,34 +32,33 @@ export async function POST(request: Request) {
     const patientLang = visit.language_patient as SupportedLanguage;
     const sourceLang = detectedLanguage
       ? mapDeepgramLang(detectedLanguage)
-      : (speaker === 'provider' ? providerLang : patientLang);
-    const targetLang = speaker === 'provider' ? patientLang : providerLang;
+      : providerLang;
 
-    let translatedText = text;
+    let textEnglish = text;
+    let textPatientLang = text;
     let culturalFlag = null;
 
-    // Translate if source and target differ
-    if (sourceLang !== targetLang) {
-      try {
-        const result = await translateWithContext(
-          text,
-          sourceLang,
-          targetLang,
-          speaker as 'patient' | 'provider'
-        );
-        translatedText = result.translatedText;
-        culturalFlag = result.culturalFlag || null;
-      } catch (err) {
-        console.error('Translation error (falling back to original):', err);
-      }
+    try {
+      const result = await translateBilingual(
+        text,
+        sourceLang,
+        providerLang,
+        patientLang
+      );
+      textEnglish = result.textEnglish;
+      textPatientLang = result.textPatientLang;
+      culturalFlag = result.culturalFlag || null;
+    } catch (err) {
+      console.error('Translation error (falling back to original):', err);
     }
 
     // Insert transcript entry (admin client bypasses RLS)
+    // original_text = English, translated_text = patient language, speaker = 'provider' (satisfies check constraint)
     const { error: insertError } = await supabase.from('transcript_entries').insert({
       visit_id: visitId,
-      speaker,
-      original_text: text,
-      translated_text: translatedText,
+      speaker: 'provider',
+      original_text: textEnglish,
+      translated_text: textPatientLang,
       cultural_flag: culturalFlag,
     });
 
@@ -72,7 +67,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to save transcript' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, translatedText, culturalFlag });
+    return NextResponse.json({ success: true, textEnglish, textPatientLang, culturalFlag });
   } catch (error) {
     console.error('Transcript route error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
