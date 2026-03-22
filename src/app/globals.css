@@ -128,3 +128,729 @@
     @apply font-sans;
   }
 }
+
+/* —— Entune marketing (home, login, join) —— */
+.entune-marketing {
+  --entune-teal: #87d3da;
+  --entune-red: #d17979;
+  --entune-bg: #0b1a2b;
+  --entune-bg2: #0f2236;
+  --entune-text: #e8f0f2;
+  --entune-text-mid: #8ba4b8;
+  --entune-text-dim: #4a6577;
+  --entune-border: rgba(255, 255, 255, 0.06);
+
+  background: var(--entune-bg);
+  color: var(--entune-text);
+  font-family: var(--font-entune-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.entune-marketing .entune-bg-glow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.entune-marketing .entune-bg-glow::before {
+  content: "";
+  position: absolute;
+  top: -30%;
+  right: -20%;
+  width: 700px;
+  height: 700px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(135, 211, 218, 0.04) 0%,
+    transparent 70%
+  );
+}
+
+.entune-marketing .entune-bg-glow::after {
+  content: "";
+  position: absolute;
+  bottom: -20%;
+  left: -15%;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(209, 121, 121, 0.03) 0%,
+    transparent 70%
+  );
+}
+
+.entune-marketing .entune-page {
+  position: relative;
+  z-index: 1;
+}
+
+.entune-marketing .entune-page-enter {
+  animation: entune-fade-up 0.5s ease both;
+}
+
+@keyframes entune-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.entune-marketing .entune-hero-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 48px;
+  margin-bottom: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0 8px;
+}
+
+.entune-marketing .entune-logo-fr {
+  display: block;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Tall 100×392 asset: size by width so it scales crisply above the wordmark (~67% = 33% smaller than prior) */
+.entune-marketing .entune-logo-fr-hero {
+  width: clamp(2.18rem, 6.7vw, 3.5rem);
+  max-width: 35px;
+  height: auto;
+}
+
+.entune-marketing .entune-logo-fr-header {
+  width: clamp(1.34rem, 3.7vw, 1.85rem);
+  max-width: 30px;
+  max-height: 5rem;
+  height: auto;
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+.entune-marketing .entune-wordmark {
+  font-family: var(--font-entune-display), ui-serif, Georgia, serif;
+  font-size: 48px;
+  font-weight: 400;
+  letter-spacing: 3px;
+  color: var(--entune-text);
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.entune-marketing .entune-tagline {
+  font-size: 11px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--entune-text-mid);
+  font-weight: 400;
+  margin-bottom: 52px;
+  text-align: center;
+}
+
+.entune-marketing .entune-role-cards {
+  display: flex;
+  gap: 24px;
+  max-width: 560px;
+  width: 100%;
+}
+
+.entune-marketing a.entune-role-card {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.entune-marketing a.entune-role-card:focus-visible {
+  outline: 2px solid var(--entune-teal);
+  outline-offset: 3px;
+}
+
+.entune-marketing .entune-role-card {
+  flex: 1;
+  background: var(--entune-bg2);
+  border: 1px solid var(--entune-border);
+  border-radius: 20px;
+  padding: 40px 24px 36px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.entune-marketing .entune-role-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.entune-marketing .entune-role-card-doctor::before {
+  background: linear-gradient(
+    135deg,
+    rgba(135, 211, 218, 0.1),
+    transparent 60%
+  );
+}
+
+.entune-marketing .entune-role-card-patient::before {
+  background: linear-gradient(
+    135deg,
+    rgba(209, 121, 121, 0.1),
+    transparent 60%
+  );
+}
+
+.entune-marketing .entune-role-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.entune-marketing .entune-role-card:hover::before {
+  opacity: 1;
+}
+
+.entune-marketing .entune-role-card-doctor:hover {
+  box-shadow: 0 12px 40px rgba(135, 211, 218, 0.08);
+}
+
+.entune-marketing .entune-role-card-patient:hover {
+  box-shadow: 0 12px 40px rgba(209, 121, 121, 0.08);
+}
+
+.entune-marketing .entune-role-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+  position: relative;
+}
+
+.entune-marketing .entune-role-icon-doctor {
+  background: rgba(135, 211, 218, 0.1);
+}
+
+.entune-marketing .entune-role-icon-patient {
+  background: rgba(209, 121, 121, 0.1);
+}
+
+.entune-marketing .entune-role-title {
+  font-family: var(--font-entune-display), ui-serif, Georgia, serif;
+  font-size: 20px;
+  font-weight: 400;
+  margin-bottom: 6px;
+  position: relative;
+}
+
+.entune-marketing .entune-role-desc {
+  font-size: 13px;
+  color: var(--entune-text-mid);
+  line-height: 1.6;
+  position: relative;
+}
+
+.entune-marketing .entune-footer-line {
+  margin-top: 48px;
+  font-size: 12px;
+  color: var(--entune-text-dim);
+  letter-spacing: 0.5px;
+}
+
+.entune-marketing .entune-footer-line span {
+  margin: 0 8px;
+  opacity: 0.4;
+}
+
+.entune-marketing .entune-back-btn {
+  position: absolute;
+  top: 28px;
+  left: 28px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--entune-border);
+  border-radius: 12px;
+  padding: 10px 18px;
+  color: var(--entune-text-mid);
+  font-family: var(--font-entune-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 10;
+  text-decoration: none;
+}
+
+.entune-marketing .entune-back-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--entune-text);
+}
+
+.entune-marketing .entune-inner-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 40px;
+  text-align: center;
+}
+
+.entune-marketing .entune-wm {
+  font-family: var(--font-entune-display), ui-serif, Georgia, serif;
+  font-size: 22px;
+  letter-spacing: 1px;
+  color: var(--entune-text);
+}
+
+.entune-marketing .entune-form-box {
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+}
+
+.entune-marketing .entune-form-title {
+  font-family: var(--font-entune-display), ui-serif, Georgia, serif;
+  font-size: 26px;
+  font-weight: 400;
+  margin-bottom: 6px;
+}
+
+.entune-marketing .entune-form-sub {
+  color: var(--entune-text-mid);
+  font-size: 14px;
+  margin-bottom: 32px;
+}
+
+.entune-marketing .entune-field {
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.entune-marketing .entune-field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--entune-teal);
+  margin-bottom: 8px;
+}
+
+.entune-marketing .entune-input {
+  width: 100%;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--entune-border);
+  border-radius: 12px;
+  color: var(--entune-text);
+  font-family: var(--font-entune-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.entune-marketing .entune-input:focus {
+  border-color: rgba(135, 211, 218, 0.4);
+}
+
+.entune-marketing .entune-input::placeholder {
+  color: var(--entune-text-dim);
+}
+
+.entune-marketing .entune-btn {
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 14px;
+  font-family: var(--font-entune-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 8px;
+}
+
+.entune-marketing .entune-btn-teal {
+  background: var(--entune-teal);
+  color: var(--entune-bg);
+}
+
+.entune-marketing .entune-btn-teal:hover:not(:disabled) {
+  box-shadow: 0 6px 24px rgba(135, 211, 218, 0.25);
+  transform: translateY(-1px);
+}
+
+.entune-marketing .entune-btn-red {
+  background: var(--entune-red);
+  color: #fff;
+}
+
+.entune-marketing .entune-btn-red:hover:not(:disabled) {
+  box-shadow: 0 6px 24px rgba(209, 121, 121, 0.25);
+  transform: translateY(-1px);
+}
+
+.entune-marketing .entune-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.entune-marketing .entune-btn-oauth {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  font-family: var(--font-entune-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--entune-border);
+  color: var(--entune-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.entune-marketing .entune-btn-oauth:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.entune-marketing .entune-code-input {
+  width: 100%;
+  padding: 18px 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--entune-border);
+  border-radius: 14px;
+  color: var(--entune-text);
+  font-family: var(--font-entune-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 8px;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+}
+
+.entune-marketing .entune-code-input:focus {
+  border-color: rgba(209, 121, 121, 0.4);
+}
+
+.entune-marketing .entune-code-input::placeholder {
+  color: var(--entune-text-dim);
+  letter-spacing: 2px;
+  font-size: 15px;
+  text-transform: none;
+}
+
+.entune-marketing .entune-help {
+  font-size: 12.5px;
+  color: var(--entune-text-dim);
+  margin-top: 20px;
+  line-height: 1.6;
+}
+
+.entune-marketing .entune-help a {
+  color: var(--entune-teal);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.entune-marketing .entune-help a:hover {
+  color: var(--entune-text);
+}
+
+.entune-marketing .entune-link-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: var(--entune-teal);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.entune-marketing .entune-link-btn:hover {
+  color: var(--entune-text);
+}
+
+.entune-marketing .entune-error {
+  font-size: 13px;
+  color: #f0a8a8;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.entune-marketing .entune-or {
+  position: relative;
+  margin: 20px 0;
+  text-align: center;
+}
+
+.entune-marketing .entune-or::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--entune-border);
+}
+
+.entune-marketing .entune-or span {
+  position: relative;
+  display: inline-block;
+  padding: 0 12px;
+  background: var(--entune-bg);
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--entune-text-dim);
+}
+
+@media (max-width: 560px) {
+  .entune-marketing .entune-role-cards {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .entune-marketing .entune-wordmark {
+    font-size: 38px;
+  }
+}
+
+/* —— Doctor desktop (Figma shells: same fonts + palette as marketing) —— */
+.entune-doctor-desktop {
+  --entune-teal: #87d3da;
+  --entune-red: #d17979;
+  --entune-bg: #0b1a2b;
+  --entune-bg2: #0f2236;
+  --entune-text: #e8f0f2;
+  --entune-text-mid: #8ba4b8;
+  --entune-text-dim: #4a6577;
+  --entune-border: rgba(255, 255, 255, 0.06);
+
+  background: var(--entune-bg);
+  color: var(--entune-text);
+  font-family: var(--font-entune-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.entune-doctor-desktop .entune-dd-glow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.entune-doctor-desktop .entune-dd-glow::before {
+  content: "";
+  position: absolute;
+  top: -25%;
+  right: -15%;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(135, 211, 218, 0.035) 0%,
+    transparent 70%
+  );
+}
+
+.entune-doctor-desktop .entune-dd-header {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--entune-border);
+}
+
+.entune-doctor-desktop .entune-dd-wordmark {
+  font-family: var(--font-entune-display), ui-serif, Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: lowercase;
+  color: var(--entune-text);
+  text-decoration: none;
+}
+
+.entune-doctor-desktop .entune-dd-wordmark:hover {
+  color: var(--entune-teal);
+}
+
+.entune-doctor-desktop .entune-dd-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.entune-doctor-desktop .entune-dd-nav a {
+  color: var(--entune-text-mid);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.entune-doctor-desktop .entune-dd-nav a:hover {
+  color: var(--entune-teal);
+}
+
+.entune-doctor-desktop .entune-dd-main {
+  position: relative;
+  z-index: 1;
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 40px 24px 64px;
+}
+
+.entune-doctor-desktop .entune-dd-placeholder {
+  animation: entune-fade-up 0.45s ease both;
+}
+
+.entune-doctor-desktop .entune-dd-title {
+  font-family: var(--font-entune-display), ui-serif, Georgia, serif;
+  font-size: 1.75rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  margin: 0 0 8px;
+  color: var(--entune-text);
+}
+
+.entune-doctor-desktop .entune-dd-lede {
+  margin: 0 0 24px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--entune-text-mid);
+  font-weight: 400;
+}
+
+.entune-doctor-desktop .entune-dd-card {
+  background: var(--entune-bg2);
+  border: 1px solid var(--entune-border);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.entune-doctor-desktop .entune-dd-muted {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--entune-text-dim);
+}
+
+.entune-doctor-desktop .entune-dd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.entune-doctor-desktop .entune-dd-link {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--entune-teal);
+  text-decoration: none;
+}
+
+.entune-doctor-desktop .entune-dd-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.entune-doctor-desktop .entune-dd-field {
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.entune-doctor-desktop .entune-dd-field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.1px;
+  color: var(--entune-teal);
+  margin-bottom: 8px;
+}
+
+.entune-doctor-desktop .entune-dd-input {
+  width: 100%;
+  max-width: 22rem;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--entune-border);
+  border-radius: 10px;
+  color: var(--entune-text);
+  font-family: inherit;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.entune-doctor-desktop .entune-dd-input:focus {
+  border-color: rgba(135, 211, 218, 0.4);
+}
+
+.entune-doctor-desktop .entune-dd-input::placeholder {
+  color: var(--entune-text-dim);
+}
+
+.entune-doctor-desktop .entune-dd-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.entune-doctor-desktop .entune-dd-btn-teal {
+  background: var(--entune-teal);
+  color: var(--entune-bg);
+}
+
+.entune-doctor-desktop .entune-dd-btn-teal:hover {
+  box-shadow: 0 6px 20px rgba(135, 211, 218, 0.22);
+  transform: translateY(-1px);
+}
+
+.entune-doctor-desktop a.entune-dd-btn {
+  text-decoration: none;
+}
+
+@media (max-width: 640px) {
+  .entune-doctor-desktop .entune-dd-nav {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
