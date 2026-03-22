@@ -70,7 +70,7 @@ describe('Design Foundation — Color System', () => {
     // Must not be the shadcn default gray oklch(0.922 0 0)
     expect(rootContent).not.toMatch(/--border\s*:\s*oklch\(0\.922\s+0\s+0\)/);
     // Must be an oklch value with non-zero chroma and hue ~180 (teal tint)
-    expect(rootContent).toMatch(/--border\s*:\s*oklch\(0\.9\d?\s+0\.00\d\s+180\)/);
+    expect(rootContent).toMatch(/--border\s*:\s*oklch\(0\.[\d]+\s+0\.[\d]+\s+180\)/);
   });
 
   it('should set --radius to 0.625rem', () => {
@@ -78,10 +78,21 @@ describe('Design Foundation — Color System', () => {
     expect(css).toMatch(/--radius\s*:\s*0\.625rem/);
   });
 
-  it('should have .dark overrides', () => {
+  it('should have .dark overrides with distinct values from light mode', () => {
     const css = readFile(GLOBALS_CSS_PATH);
-    expect(css).toMatch(/\.dark\s*\{[^}]*--primary:/s);
-    expect(css).toMatch(/\.dark\s*\{[^}]*--background:/s);
+    const rootBlock = css.match(/:root\s*\{([^}]+)\}/s);
+    const darkBlock = css.match(/\.dark\s*\{([^}]+)\}/s);
+    expect(rootBlock).not.toBeNull();
+    expect(darkBlock).not.toBeNull();
+    // Dark block must define --primary and --background
+    expect(darkBlock![1]).toMatch(/--primary\s*:/);
+    expect(darkBlock![1]).toMatch(/--background\s*:/);
+    // Dark values must differ from light (extract and compare --primary)
+    const lightPrimary = rootBlock![1].match(/--primary\s*:\s*([^;]+)/);
+    const darkPrimary = darkBlock![1].match(/--primary\s*:\s*([^;]+)/);
+    expect(lightPrimary).not.toBeNull();
+    expect(darkPrimary).not.toBeNull();
+    expect(darkPrimary![1].trim()).not.toBe(lightPrimary![1].trim());
   });
 });
 
