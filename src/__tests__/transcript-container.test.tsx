@@ -121,8 +121,8 @@ describe('TranscriptEntryCard — labels and structure', () => {
     ).toBeTruthy();
   });
 
-  it('hides translation section when original equals translated', () => {
-    render(
+  it('hides translation section when original equals translated (one child section only)', () => {
+    const { container } = render(
       <TranscriptEntryCard
         textOriginal="Hello"
         textTranslated="Hello"
@@ -133,24 +133,12 @@ describe('TranscriptEntryCard — labels and structure', () => {
 
     expect(screen.getByText('Original')).toBeInTheDocument();
     expect(screen.queryByText('Translation')).not.toBeInTheDocument();
-  });
-
-  it('shows only one section (Original) when same language — no Translation wrapper', () => {
-    const { container } = render(
-      <TranscriptEntryCard
-        textOriginal="Hello"
-        textTranslated="Hello"
-        originalLanguage="en-US"
-        translatedLanguage="en-US"
-      />,
-    );
-
-    const wrapper = container.firstElementChild as HTMLElement;
     // Only Original section rendered (no Translation div)
+    const wrapper = container.firstElementChild as HTMLElement;
     expect(wrapper.children).toHaveLength(1);
   });
 
-  it('renders faint border-b separator per spec with last-entry removal', () => {
+  it('renders border-b separator and two content sections for bilingual entry', () => {
     const { container } = render(
       <TranscriptEntryCard
         textOriginal="Hello"
