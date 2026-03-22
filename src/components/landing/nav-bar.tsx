@@ -24,7 +24,7 @@ export function NavBar() {
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link
           href="/about"
-          className="flex items-center gap-2 text-xl font-light tracking-[0.12em] lowercase text-[var(--entune-text)] hover:text-[var(--entune-teal)] transition-colors"
+          className="flex items-center gap-2 text-xl font-bold tracking-[0.08em] lowercase text-[var(--entune-text)] hover:text-[var(--entune-teal)] transition-colors"
           style={{ fontFamily: 'var(--font-entune-display), ui-serif, Georgia, serif' }}
         >
           <Image
