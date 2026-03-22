@@ -7,6 +7,7 @@ import { CulturalFlagCard } from '@/components/visit/cultural-flag-card';
 import { useSessionStatus } from '@/hooks/use-session-status';
 import { useRealtimeTranscript } from '@/hooks/use-realtime-transcript';
 import { useDeepgramTranscript } from '@/hooks/use-deepgram-transcript';
+import { useAutoScroll } from '@/hooks/use-auto-scroll';
 import { createClient } from '@/lib/supabase/client';
 import { endSession } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -44,8 +45,9 @@ function DoctorSessionContent() {
   } = useDeepgramTranscript();
 
   const processedIndexRef = useRef(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const startedRef = useRef(false);
+
+  const { containerRef, showButton, scrollToBottom } = useAutoScroll([realtimeTranscript, interimText]);
 
   // Fetch visit details on mount
   useEffect(() => {
@@ -96,13 +98,6 @@ function DoctorSessionContent() {
       }).catch((err) => console.error('Transcript submit error:', err));
     }
   }, [deepgramEntries, visitId, status]);
-
-  // Auto-scroll transcript
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
-  }, [realtimeTranscript, interimText]);
 
   const handleEndSession = useCallback(async () => {
     if (!visitId) return;
@@ -210,8 +205,8 @@ function DoctorSessionContent() {
               <CardHeader>
                 <CardTitle className="text-base">Live Transcript</CardTitle>
               </CardHeader>
-              <CardContent>
-                <ScrollArea className="max-h-[400px]">
+              <CardContent className="relative">
+                <ScrollArea ref={containerRef} className="max-h-[400px]">
                   <div>
                     {realtimeTranscript.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-8 text-center">
@@ -247,9 +242,18 @@ function DoctorSessionContent() {
                         )}
                       </div>
                     )}
-                    <div ref={scrollRef} />
                   </div>
                 </ScrollArea>
+                {showButton && realtimeTranscript.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="absolute bottom-2 left-1/2 -translate-x-1/2 shadow-md"
+                    onClick={scrollToBottom}
+                  >
+                    Scroll to latest
+                  </Button>
+                )}
               </CardContent>
             </Card>
 

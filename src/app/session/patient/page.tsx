@@ -1,15 +1,17 @@
 'use client';
 
-import { Suspense, useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRealtimeTranscript } from '@/hooks/use-realtime-transcript';
 import { useSessionStatus } from '@/hooks/use-session-status';
+import { useAutoScroll } from '@/hooks/use-auto-scroll';
 import { createClient } from '@/lib/supabase/client';
 import { updatePatientSessionLanguage } from '@/lib/api';
 import { PatientLanguageSelect } from '@/components/marketing/patient-language-select';
 import { toPatientUiLanguage, type PatientUiLanguage } from '@/lib/patient-languages';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { SupportedLanguage, PatientReport } from '@/lib/types';
 
@@ -29,8 +31,9 @@ function PatientSessionContent() {
 
   const { status, error: statusError } = useSessionStatus(visitId);
   const { transcript, error: transcriptError } = useRealtimeTranscript(visitId);
+  const [transcriptOpen, setTranscriptOpen] = useState(false);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const { containerRef, showButton, scrollToBottom } = useAutoScroll([transcript]);
 
   // Fetch visit details on mount
   useEffect(() => {
@@ -64,13 +67,6 @@ function PatientSessionContent() {
         }
       });
   }, [status, visitId]);
-
-  // Auto-scroll
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
-  }, [transcript]);
 
   async function handlePatientLanguageChange(next: PatientUiLanguage) {
     setPatientLang(next);
@@ -156,8 +152,8 @@ function PatientSessionContent() {
                 {LANGUAGE_LABELS[patientLang]} / English
               </p>
             </CardHeader>
-            <CardContent>
-              <ScrollArea className="max-h-[500px]">
+            <CardContent className="relative">
+              <ScrollArea ref={containerRef} className="max-h-[500px]">
                 <div>
                   {transcript.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-8 text-center">
@@ -177,9 +173,18 @@ function PatientSessionContent() {
                       ))}
                     </div>
                   )}
-                  <div ref={scrollRef} />
                 </div>
               </ScrollArea>
+              {showButton && transcript.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="absolute bottom-2 left-1/2 -translate-x-1/2 shadow-md"
+                  onClick={scrollToBottom}
+                >
+                  Scroll to latest
+                </Button>
+              )}
             </CardContent>
           </Card>
         )}
@@ -187,6 +192,41 @@ function PatientSessionContent() {
         {/* Session ended */}
         {status === 'ended' && (
           <div className="space-y-6">
+            {/* Collapsible transcript review */}
+            {transcript.length > 0 && (
+              <Card>
+                <CardHeader
+                  className="cursor-pointer select-none"
+                  onClick={() => setTranscriptOpen(!transcriptOpen)}
+                >
+                  <CardTitle className="text-base flex items-center justify-between">
+                    <span>Conversation Transcript</span>
+                    <span className="text-muted-foreground text-sm font-normal">
+                      {transcriptOpen ? 'Hide' : 'Show'} ({transcript.length} entries)
+                    </span>
+                  </CardTitle>
+                </CardHeader>
+                {transcriptOpen && (
+                  <CardContent>
+                    <ScrollArea className="max-h-[400px]">
+                      <div className="space-y-3">
+                        {transcript.map((entry, i) => (
+                          <div key={i} className="rounded-lg p-3 bg-muted/40">
+                            <p className="text-sm font-medium">{entry.textPatientLang}</p>
+                            {entry.textEnglish !== entry.textPatientLang && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {entry.textEnglish}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                )}
+              </Card>
+            )}
+
             {patientReport ? (
               <>
                 <Card>
