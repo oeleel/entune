@@ -2,6 +2,7 @@
 
 import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { useRealtimeTranscript } from '@/hooks/use-realtime-transcript';
 import { useSessionStatus } from '@/hooks/use-session-status';
 import { SessionTopBar } from '@/components/visit/session-top-bar';
@@ -130,9 +131,18 @@ function PatientSessionContent() {
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Entune</h1>
-            <p className="text-sm text-muted-foreground">Visit Complete</p>
+          <div className="flex items-center gap-3">
+            <Image
+              src="/LogoFr.png"
+              alt=""
+              width={100}
+              height={392}
+              className="h-7 w-auto shrink-0 dark:invert-0 invert"
+            />
+            <div>
+              <h1 className="text-xl font-bold tracking-[0.08em] lowercase text-foreground">entune</h1>
+              <p className="text-sm text-muted-foreground">Visit Complete</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {patientReport && (
