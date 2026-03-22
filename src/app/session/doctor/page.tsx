@@ -3,7 +3,6 @@
 import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AuthGuard } from '@/components/shared/auth-guard';
-import { CulturalFlagCard } from '@/components/visit/cultural-flag-card';
 import { SessionTopBar } from '@/components/visit/session-top-bar';
 import { TranscriptContainer } from '@/components/visit/transcript-container';
 import { useSessionStatus } from '@/hooks/use-session-status';
@@ -13,7 +12,7 @@ import { createClient } from '@/lib/supabase/client';
 import { endSession } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import type { SupportedLanguage, CulturalFlag } from '@/lib/types';
+import type { SupportedLanguage } from '@/lib/types';
 
 function DoctorSessionContent() {
   const router = useRouter();
@@ -114,10 +113,6 @@ function DoctorSessionContent() {
     );
   }
 
-  const culturalFlags = realtimeTranscript
-    .map((e) => e.culturalFlag)
-    .filter((f): f is CulturalFlag => f !== null);
-
   // Waiting for patient
   if (status === 'waiting') {
     return (
@@ -177,15 +172,6 @@ function DoctorSessionContent() {
           interimText={interimText}
         />
       </div>
-
-      {/* Cultural flags overlay */}
-      {culturalFlags.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-30 w-80 space-y-2">
-          {culturalFlags.slice(-2).map((flag, i) => (
-            <CulturalFlagCard key={i} flag={flag} />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

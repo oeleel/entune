@@ -4,6 +4,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { ArrowDown } from 'lucide-react';
 
 import { TranscriptEntryCard } from '@/components/visit/transcript-entry';
+import { CulturalFlagCard } from '@/components/visit/cultural-flag-card';
 import type { TranscriptEntry, SupportedLanguage } from '@/lib/types';
 
 const SCROLL_THRESHOLD = 50;
@@ -84,13 +85,19 @@ export function TranscriptContainer({
         ) : (
           <>
             {transcript.map((entry, i) => (
-              <TranscriptEntryCard
-                key={i}
-                textOriginal={entry.textEnglish}
-                textTranslated={entry.textPatientLang}
-                originalLanguage={providerLanguage}
-                translatedLanguage={patientLanguage}
-              />
+              <div key={i}>
+                <TranscriptEntryCard
+                  textOriginal={entry.textEnglish}
+                  textTranslated={entry.textPatientLang}
+                  originalLanguage={providerLanguage}
+                  translatedLanguage={patientLanguage}
+                />
+                {entry.culturalFlag && (
+                  <div className="py-2 px-2">
+                    <CulturalFlagCard flag={entry.culturalFlag} />
+                  </div>
+                )}
+              </div>
             ))}
             {interimText && (
               <div className="py-4 opacity-50">
