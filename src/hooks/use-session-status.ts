@@ -6,6 +6,7 @@ import type { SessionStatus } from '@/lib/types';
 
 export function useSessionStatus(visitId: string | null) {
   const [status, setStatus] = useState<SessionStatus>('waiting');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visitId) return;
@@ -18,7 +19,11 @@ export function useSessionStatus(visitId: string | null) {
       .select('status')
       .eq('id', visitId)
       .single()
-      .then(({ data }) => {
+      .then(({ data, error: fetchError }) => {
+        if (fetchError) {
+          setError(`Failed to load session status: ${fetchError.message}`);
+          return;
+        }
         if (data) {
           setStatus(data.status as SessionStatus);
         }
@@ -40,12 +45,16 @@ export function useSessionStatus(visitId: string | null) {
           setStatus(newStatus);
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR') {
+          setError(`Realtime connection error: ${err?.message || 'unknown'}`);
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, [visitId]);
 
-  return { status };
+  return { status, error };
 }
