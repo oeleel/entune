@@ -778,10 +778,10 @@
 
 @media (max-width: 480px) {
   .entune-lang-switch {
-    position: static;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
     justify-content: center;
-    max-width: none;
-    margin: 1rem auto 0;
   }
 }
 
