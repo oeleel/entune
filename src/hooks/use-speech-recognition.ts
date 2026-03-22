@@ -29,7 +29,7 @@ export function useSpeechRecognition(
         }
       },
       onError: (error) => {
-        console.error('Speech recognition error:', error);
+        console.warn('Speech recognition error:', error);
         setIsListening(false);
       },
       onEnd: () => {

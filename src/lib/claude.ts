@@ -328,14 +328,18 @@ export async function generatePatientReport(
     )
     .join('\n\n');
 
-  const systemPrompt = `You are a patient education assistant. Generate a simple visit summary for a patient in ${langName} at a 6th-grade reading level.
+  const systemPrompt = `You are a patient education assistant. Generate a simple visit summary for a patient at a 6th-grade reading level.
+
+Provide content in BOTH ${langName} (for the patient) AND English (for the provider's records).
 
 Return ONLY valid JSON:
 {
-  "summary": "Brief, simple summary of what happened during the visit (in ${langName})",
-  "medications": [{"name": "medication name", "instructions": "simple instructions in ${langName}"}],
-  "followUps": [{"item": "what to do next in ${langName}", "date": "when, if mentioned"}],
-  "warningSignsToWatchFor": ["simple warning sign in ${langName}"]
+  "summary": "Brief, simple summary in ${langName}",
+  "summaryEnglish": "Same summary in English",
+  "medications": [{"name": "medication name", "instructions": "simple instructions in ${langName}", "instructionsEnglish": "same instructions in English"}],
+  "followUps": [{"item": "what to do next in ${langName}", "itemEnglish": "same in English", "date": "when, if mentioned"}],
+  "warningSignsToWatchFor": ["simple warning sign in ${langName}"],
+  "warningSignsEnglish": ["same warning sign in English"]
 }
 
 Use empty arrays if nothing was discussed. Keep language simple and reassuring.`;
@@ -352,9 +356,11 @@ Use empty arrays if nothing was discussed. Keep language simple and reassuring.`
 
   const parsed = parseClaudeJSON<{
     summary: string;
-    medications: { name: string; instructions: string }[];
-    followUps: { item: string; date?: string }[];
+    summaryEnglish?: string;
+    medications: { name: string; instructions: string; instructionsEnglish?: string }[];
+    followUps: { item: string; itemEnglish?: string; date?: string }[];
     warningSignsToWatchFor: string[];
+    warningSignsEnglish?: string[];
   }>(content.text);
 
   return {

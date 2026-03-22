@@ -117,9 +117,11 @@ export type DoctorReport = {
 export type PatientReport = {
   visitId: string;
   summary: string;
-  medications: { name: string; instructions: string }[];
-  followUps: { item: string; date?: string }[];
+  summaryEnglish?: string;
+  medications: { name: string; instructions: string; instructionsEnglish?: string }[];
+  followUps: { item: string; itemEnglish?: string; date?: string }[];
   warningSignsToWatchFor: string[];
+  warningSignsEnglish?: string[];
   language: SupportedLanguage;
   generatedAt: string;
 };

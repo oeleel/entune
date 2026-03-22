@@ -1,18 +1,17 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { AuthGuard } from '@/components/shared/auth-guard';
 import { useUser } from '@/hooks/use-user';
-import { useChat } from '@/hooks/use-chat';
 import { createClient } from '@/lib/supabase/client';
 import { createSession } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog,
   DialogContent,
@@ -28,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { UserNav } from '@/components/shared/user-nav';
 import type { SupportedLanguage } from '@/lib/types';
 
 const LANGUAGE_LABELS: Record<string, string> = {
@@ -57,19 +57,11 @@ function DashboardContent() {
   const router = useRouter();
   const [visits, setVisits] = useState<Visit[]>([]);
   const [search, setSearch] = useState('');
-  const [selectedVisitId, setSelectedVisitId] = useState<string | null>(null);
   const [joinCode, setJoinCode] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [patientLang, setPatientLang] = useState<SupportedLanguage>('ko-KR');
   const [providerLang, setProviderLang] = useState<SupportedLanguage>('en-US');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const chatInputRef = useRef<HTMLInputElement>(null);
-
-  const { messages, isLoading, sendMessage, clearMessages } = useChat(
-    user?.id ?? '',
-    user?.preferredLanguage ?? 'en-US',
-    selectedVisitId ?? undefined
-  );
 
   useEffect(() => {
     if (!user) return;
@@ -106,25 +98,6 @@ function DashboardContent() {
     }
   }
 
-  function handleVisitClick(visitId: string) {
-    if (selectedVisitId === visitId) {
-      setSelectedVisitId(null);
-      clearMessages();
-    } else {
-      setSelectedVisitId(visitId);
-      clearMessages();
-    }
-  }
-
-  function handleChatSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const value = chatInputRef.current?.value.trim();
-    if (value) {
-      sendMessage(value);
-      if (chatInputRef.current) chatInputRef.current.value = '';
-    }
-  }
-
   if (!user) return null;
 
   return (
@@ -137,14 +110,9 @@ function DashboardContent() {
             <p className="text-sm text-muted-foreground">Doctor Dashboard</p>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              {user.name}
-            </span>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger>
-                <Button size="lg">
-                  + New Session
-                </Button>
+              <DialogTrigger render={<Button size="lg" />}>
+                + New Session
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
@@ -203,46 +171,40 @@ function DashboardContent() {
                 )}
               </DialogContent>
             </Dialog>
+            <UserNav user={user} />
           </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Visits List — takes 2 columns on large screens */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Past Visits</h2>
-              <span className="text-sm text-muted-foreground">
-                {visits.length} visit{visits.length !== 1 ? 's' : ''}
-              </span>
-            </div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Past Visits</h2>
+            <span className="text-sm text-muted-foreground">
+              {visits.length} visit{visits.length !== 1 ? 's' : ''}
+            </span>
+          </div>
 
-            <Input
-              type="text"
-              placeholder="Search by patient name, language, or ID..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <Input
+            type="text"
+            placeholder="Search by patient name, language, or ID..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
 
-            <div className="space-y-2">
-              {filteredVisits.length === 0 ? (
-                <Card>
-                  <CardContent className="py-12 text-center text-muted-foreground">
-                    {visits.length === 0
-                      ? 'No visits yet. Start a new session to begin.'
-                      : 'No visits match your search.'}
-                  </CardContent>
-                </Card>
-              ) : (
-                filteredVisits.map((v) => (
-                  <Card
-                    key={v.id}
-                    className={`cursor-pointer transition-colors hover:bg-accent/50 ${
-                      selectedVisitId === v.id ? 'ring-2 ring-primary bg-accent/30' : ''
-                    }`}
-                    onClick={() => handleVisitClick(v.id)}
-                  >
+          <div className="space-y-2">
+            {filteredVisits.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  {visits.length === 0
+                    ? 'No visits yet. Start a new session to begin.'
+                    : 'No visits match your search.'}
+                </CardContent>
+              </Card>
+            ) : (
+              filteredVisits.map((v) => (
+                <Link key={v.id} href={`/dashboard/visit/${v.id}`}>
+                  <Card className="cursor-pointer transition-colors hover:bg-accent/50">
                     <CardContent className="py-4">
                       <div className="flex items-center justify-between">
                         <div className="space-y-1">
@@ -263,7 +225,7 @@ function DashboardContent() {
                           </div>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <span>{LANGUAGE_LABELS[v.language_patient] || v.language_patient}</span>
-                            <span>→</span>
+                            <span>&rarr;</span>
                             <span>{LANGUAGE_LABELS[v.language_provider] || v.language_provider}</span>
                             {v.patient_name && (
                               <>
@@ -279,74 +241,9 @@ function DashboardContent() {
                       </div>
                     </CardContent>
                   </Card>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Chat Panel — takes 1 column */}
-          <div className="lg:col-span-1">
-            <Card className="h-[calc(100vh-12rem)] flex flex-col">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Visit Chat</CardTitle>
-                <CardDescription>
-                  {selectedVisitId
-                    ? 'Ask questions about the selected visit.'
-                    : 'Select a visit to start chatting.'}
-                </CardDescription>
-              </CardHeader>
-              <Separator />
-              <CardContent className="flex-1 flex flex-col p-0 min-h-0">
-                {selectedVisitId ? (
-                  <>
-                    <ScrollArea className="flex-1 px-4 py-3">
-                      <div className="space-y-3">
-                        {messages.length === 0 && !isLoading && (
-                          <p className="text-sm text-muted-foreground text-center py-8">
-                            Ask a question about this visit...
-                          </p>
-                        )}
-                        {messages.map((m) => (
-                          <div
-                            key={m.id}
-                            className={`text-sm rounded-lg px-3 py-2 max-w-[90%] ${
-                              m.role === 'user'
-                                ? 'ml-auto bg-primary text-primary-foreground'
-                                : 'bg-muted'
-                            }`}
-                          >
-                            {m.content}
-                          </div>
-                        ))}
-                        {isLoading && (
-                          <div className="bg-muted text-sm rounded-lg px-3 py-2 max-w-[90%] animate-pulse">
-                            Thinking...
-                          </div>
-                        )}
-                      </div>
-                    </ScrollArea>
-                    <div className="border-t p-3">
-                      <form onSubmit={handleChatSubmit} className="flex gap-2">
-                        <Input
-                          ref={chatInputRef}
-                          placeholder="Ask about this visit..."
-                          disabled={isLoading}
-                        />
-                        <Button type="submit" size="sm" disabled={isLoading}>
-                          Send
-                        </Button>
-                      </form>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex-1 flex items-center justify-center p-6">
-                    <p className="text-sm text-muted-foreground text-center">
-                      Click a visit on the left to chat about it.
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                </Link>
+              ))
+            )}
           </div>
         </div>
       </main>

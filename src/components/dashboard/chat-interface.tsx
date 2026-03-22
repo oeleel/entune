@@ -27,7 +27,7 @@ export function ChatInterface({
   };
 
   return (
-    <div className="flex flex-col h-96 border rounded-lg">
+    <div className="flex flex-col h-full">
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-3">
           {messages.length === 0 && (
