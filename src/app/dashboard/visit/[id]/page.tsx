@@ -5,13 +5,12 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AuthGuard } from '@/components/shared/auth-guard';
 import { useUser } from '@/hooks/use-user';
-import { useChat } from '@/hooks/use-chat';
 import { ChatInterface } from '@/components/dashboard/chat-interface';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import {
   AlertDialog,
@@ -24,6 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import Markdown from 'react-markdown';
 import type { PatientReport, DoctorReport } from '@/lib/types';
 
 const LANGUAGE_LABELS: Record<string, string> = {
@@ -71,12 +71,6 @@ function VisitDetailContent() {
   const [loading, setLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const { messages, isLoading: chatLoading, sendMessage } = useChat(
-    user?.id ?? '',
-    user?.preferredLanguage ?? 'en-US',
-    visitId
-  );
 
   useEffect(() => {
     if (!user) return;
@@ -151,6 +145,42 @@ function VisitDetailContent() {
     router.push('/dashboard');
   }
 
+  function renderTranscript() {
+    if (transcript.length === 0) {
+      return (
+        <p className="text-sm text-muted-foreground text-center py-8">
+          No transcript entries for this visit.
+        </p>
+      );
+    }
+
+    const patientLangLabel = LANGUAGE_LABELS[visit!.language_patient] || visit!.language_patient;
+
+    return (
+      <div className="space-y-4">
+        {transcript.map((entry) => (
+          <div key={entry.id} className="border-b pb-3 last:border-b-0 last:pb-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs text-muted-foreground">
+                {new Date(entry.timestamp).toLocaleTimeString('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  second: '2-digit',
+                })}
+              </span>
+            </div>
+            <p className="text-sm">{entry.original_text}</p>
+            {entry.original_text !== entry.translated_text && (
+              <p className="text-xs text-muted-foreground mt-1 italic">
+                {patientLangLabel}: {entry.translated_text}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   if (!user) return null;
 
   if (loading) {
@@ -171,6 +201,9 @@ function VisitDetailContent() {
       </div>
     );
   }
+
+  const hasCulturalFlags = doctorReport?.culturalFlags && doctorReport.culturalFlags.length > 0;
+  const hasReports = visit.status === 'ended' && (patientReport || doctorReport);
 
   return (
     <div className="min-h-screen bg-background">
@@ -248,20 +281,23 @@ function VisitDetailContent() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-6 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left column — Reports + Transcript */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Reports */}
-            {visit.status === 'ended' && (patientReport || doctorReport) && (
-              <div className="space-y-6">
-                {/* Patient Summary (English for doctor) */}
-                {patientReport && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Patient Summary</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
+          <div className="lg:col-span-2">
+            {hasReports ? (
+              <Tabs defaultValue="summary" className="flex flex-col h-[calc(100vh-11rem)]">
+                <TabsList className="w-full justify-start shrink-0">
+                  <TabsTrigger value="summary">Summary</TabsTrigger>
+                  <TabsTrigger value="soap">SOAP</TabsTrigger>
+                  {hasCulturalFlags && <TabsTrigger value="flags">Flags</TabsTrigger>}
+                  <TabsTrigger value="transcript">Transcript</TabsTrigger>
+                </TabsList>
+
+                {/* Patient Summary */}
+                <TabsContent value="summary" className="flex-1 min-h-0 overflow-y-auto p-4">
+                  {patientReport ? (
+                    <div className="space-y-4">
                       <p>{patientReport.summaryEnglish || patientReport.summary}</p>
 
                       {patientReport.medications.length > 0 && (
@@ -308,92 +344,91 @@ function VisitDetailContent() {
                           </ul>
                         </div>
                       )}
-                    </CardContent>
-                  </Card>
-                )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No patient summary available.</p>
+                  )}
+                </TabsContent>
 
                 {/* Doctor SOAP Note */}
-                {doctorReport && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Provider Notes (SOAP)</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
+                <TabsContent value="soap" className="flex-1 min-h-0 overflow-y-auto p-4">
+                  {doctorReport ? (
+                    <div className="space-y-4">
                       <div>
                         <p className="text-xs text-muted-foreground uppercase mb-1">Subjective</p>
-                        <p className="text-sm">{doctorReport.subjective}</p>
+                        <div className="aui-md text-sm"><Markdown>{doctorReport.subjective}</Markdown></div>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground uppercase mb-1">Objective</p>
-                        <p className="text-sm">{doctorReport.objective}</p>
+                        <div className="aui-md text-sm"><Markdown>{doctorReport.objective}</Markdown></div>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground uppercase mb-1">Assessment</p>
-                        <p className="text-sm">{doctorReport.assessment}</p>
+                        <div className="aui-md text-sm"><Markdown>{doctorReport.assessment}</Markdown></div>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground uppercase mb-1">Plan</p>
-                        <p className="text-sm">{doctorReport.plan}</p>
+                        <div className="aui-md text-sm"><Markdown>{doctorReport.plan}</Markdown></div>
                       </div>
                       {doctorReport.culturalConsiderations && (
                         <div>
                           <p className="text-xs text-muted-foreground uppercase mb-1">Cultural Considerations</p>
-                          <p className="text-sm">{doctorReport.culturalConsiderations}</p>
+                          <div className="aui-md text-sm"><Markdown>{doctorReport.culturalConsiderations}</Markdown></div>
                         </div>
                       )}
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            )}
-
-            {/* Transcript */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Transcript</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {transcript.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    No transcript entries for this visit.
-                  </p>
-                ) : (
-                  <ScrollArea className="h-[calc(100vh-20rem)]">
-                    <div className="space-y-4 pr-4">
-                      {transcript.map((entry) => {
-                        // original_text = English, translated_text = patient language
-                        const patientLangLabel = LANGUAGE_LABELS[visit.language_patient] || visit.language_patient;
-
-                        return (
-                          <div key={entry.id} className="border-b pb-3 last:border-b-0 last:pb-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs text-muted-foreground">
-                                {new Date(entry.timestamp).toLocaleTimeString('en-US', {
-                                  hour: 'numeric',
-                                  minute: '2-digit',
-                                  second: '2-digit',
-                                })}
-                              </span>
-                            </div>
-                            <p className="text-sm">{entry.original_text}</p>
-                            {entry.original_text !== entry.translated_text && (
-                              <p className="text-xs text-muted-foreground mt-1 italic">
-                                {patientLangLabel}: {entry.translated_text}
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })}
                     </div>
-                  </ScrollArea>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No provider notes available.</p>
+                  )}
+                </TabsContent>
+
+                {/* Cultural Flags (only if flags exist) */}
+                {hasCulturalFlags && (
+                  <TabsContent value="flags" className="flex-1 min-h-0 overflow-y-auto p-4">
+                    <div className="space-y-3">
+                      {doctorReport!.culturalFlags.map((flag, i) => (
+                        <div key={i} className="rounded-md border border-amber-200 dark:border-amber-800 p-3 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm">{flag.term}</span>
+                            <span className="text-xs text-muted-foreground">({flag.literal})</span>
+                          </div>
+                          <p className="text-sm">{flag.clinicalContext}</p>
+                          {flag.screenFor.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              Screen for: {flag.screenFor.join(', ')}
+                            </p>
+                          )}
+                          {flag.safetyNote && (
+                            <p className="text-xs text-red-600 dark:text-red-400">
+                              Safety: {flag.safetyNote}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </TabsContent>
                 )}
-              </CardContent>
-            </Card>
+
+                {/* Transcript */}
+                <TabsContent value="transcript" className="flex-1 min-h-0 overflow-y-auto p-4">
+                  {renderTranscript()}
+                </TabsContent>
+              </Tabs>
+            ) : (
+              <Card className="h-[calc(100vh-11rem)] flex flex-col">
+                <CardHeader>
+                  <CardTitle>Transcript</CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1 min-h-0 overflow-y-auto">
+                  {renderTranscript()}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Right column — Chat */}
           <div className="lg:col-span-1">
-            <Card className="h-[calc(100vh-12rem)] flex flex-col">
+            <Card className="h-[calc(100vh-11rem)] flex flex-col">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Visit Chat</CardTitle>
                 <p className="text-sm text-muted-foreground">
@@ -403,9 +438,9 @@ function VisitDetailContent() {
               <Separator />
               <CardContent className="flex-1 p-0 min-h-0">
                 <ChatInterface
-                  messages={messages}
-                  isLoading={chatLoading}
-                  onSendMessage={sendMessage}
+                  userId={user.id}
+                  preferredLanguage={user.preferredLanguage ?? 'en-US'}
+                  visitId={visitId}
                 />
               </CardContent>
             </Card>

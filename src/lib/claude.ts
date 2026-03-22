@@ -301,17 +301,18 @@ export async function chatWithHistory(
 ): Promise<{ reply: string; referencedVisitIds: string[] }> {
   const langName = LANGUAGE_NAMES[preferredLanguage];
 
-  const systemPrompt = `You are a personal health assistant for a patient who uses Entune.
-You have access to their past visit transcripts and summaries below.
+  const systemPrompt = `You are a clinical documentation assistant for a healthcare provider using Entune.
+You have access to visit transcripts and summaries for their patients below.
 
 RULES:
 1. Answer questions using ONLY information from the visit history provided.
 2. Respond in ${langName}.
-3. Do NOT diagnose, prescribe, or give medical advice beyond what the providers stated in the visits.
-4. If asked about something not in the visit history, say "I don't have that information from your visits. Please consult your healthcare provider." (in ${langName}).
-5. When referencing a visit, mention the date and provider language so the patient can identify it.
-6. Be warm and supportive, but stay strictly within the bounds of documented visit information.
-7. At the end of your response, include a JSON line with referenced visit IDs:
+3. Use clinical third-person language. Refer to "the patient", never "you" or "your". Do NOT use personal pronouns directed at the reader.
+4. Be analytical and precise. Summarize findings, flag discrepancies, and cite specific visit details.
+5. Do NOT add new diagnoses or recommendations beyond what was documented in the visits.
+6. If asked about something not in the visit history, say "That information is not available in the documented visit history." (in ${langName}).
+7. When referencing a visit, mention the date and patient language for identification.
+8. At the end of your response, include a JSON line with referenced visit IDs:
    |||REFS:["visit-id-1","visit-id-2"]|||
 
 VISIT HISTORY:
@@ -371,13 +372,20 @@ export async function generateDoctorReport(
 
   const systemPrompt = `You are a medical documentation assistant. Generate a SOAP-style clinical note from this bilingual visit transcript.
 
+FORMAT RULES for each field:
+- Use markdown formatting: numbered lists, bullet points, bold for emphasis.
+- For "assessment" and "plan", always use a numbered list (1. 2. 3.) with each item on its own line.
+- For "subjective" and "objective", use bullet points or paragraphs separated by blank lines.
+- Use **bold** for critical findings like safety concerns.
+- Keep each point concise — one idea per list item.
+
 Return ONLY valid JSON:
 {
-  "subjective": "Patient's reported symptoms, concerns, and history (clinical language)",
-  "objective": "Observable findings mentioned during the visit",
-  "assessment": "Clinical assessment based on the conversation",
-  "plan": "Follow-up items, medications, referrals discussed",
-  "culturalConsiderations": "Cultural health concepts detected and their clinical relevance"
+  "subjective": "Patient's reported symptoms, concerns, and history (clinical language, markdown formatted)",
+  "objective": "Observable findings mentioned during the visit (markdown formatted)",
+  "assessment": "Clinical assessment based on the conversation (numbered list)",
+  "plan": "Follow-up items, medications, referrals discussed (numbered list)",
+  "culturalConsiderations": "Cultural health concepts detected and their clinical relevance (markdown formatted)"
 }
 
 CULTURAL FLAGS DETECTED:
@@ -403,6 +411,7 @@ ${flagsText}`;
 
   return {
     ...parsed,
+    culturalFlags,
     languagePair,
     generatedAt: new Date().toISOString(),
   };
@@ -421,21 +430,22 @@ export async function generatePatientReport(
     )
     .join('\n\n');
 
-  const systemPrompt = `You are a patient education assistant. Generate a simple visit summary for a patient at a 6th-grade reading level.
+  const systemPrompt = `You are a medical documentation assistant. Generate a visit summary in TWO versions from this transcript:
 
-Provide content in BOTH ${langName} (for the patient) AND English (for the provider's records).
+1. PATIENT VERSION (in ${langName}): Simple, warm, 6th-grade reading level. Address the patient directly ("You should take...").
+2. PROVIDER VERSION (in English): Clinical third-person language about the patient ("Patient was prescribed...", "Patient should follow up..."). This is for the doctor's records.
 
 Return ONLY valid JSON:
 {
-  "summary": "Brief, simple summary in ${langName}",
-  "summaryEnglish": "Same summary in English",
-  "medications": [{"name": "medication name", "instructions": "simple instructions in ${langName}", "instructionsEnglish": "same instructions in English"}],
-  "followUps": [{"item": "what to do next in ${langName}", "itemEnglish": "same in English", "date": "when, if mentioned"}],
-  "warningSignsToWatchFor": ["simple warning sign in ${langName}"],
-  "warningSignsEnglish": ["same warning sign in English"]
+  "summary": "Brief, simple summary for the patient in ${langName}",
+  "summaryEnglish": "Clinical third-person summary for the provider in English",
+  "medications": [{"name": "medication name", "instructions": "simple instructions for patient in ${langName}", "instructionsEnglish": "clinical instructions for provider in English"}],
+  "followUps": [{"item": "what to do next for patient in ${langName}", "itemEnglish": "clinical follow-up for provider in English", "date": "when, if mentioned"}],
+  "warningSignsToWatchFor": ["simple warning sign for patient in ${langName}"],
+  "warningSignsEnglish": ["clinical warning sign for provider in English"]
 }
 
-Use empty arrays if nothing was discussed. Keep language simple and reassuring.`;
+Use empty arrays if nothing was discussed.`;
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',

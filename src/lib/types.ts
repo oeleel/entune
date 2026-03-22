@@ -117,6 +117,7 @@ export type DoctorReport = {
   assessment: string;
   plan: string;
   culturalConsiderations: string;
+  culturalFlags: CulturalFlag[];
   languagePair: LanguagePair;
   generatedAt: string;
 };
