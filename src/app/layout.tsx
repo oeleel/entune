@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
-import { DM_Sans, Geist_Mono } from "next/font/google";
+import { DM_Sans, Geist_Mono, Playfair_Display } from "next/font/google";
 
 import { I18nProvider } from "@/components/providers/i18n-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
 
@@ -18,6 +20,12 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-entune-display",
+  weight: ["400", "500"],
+});
+
 export const metadata: Metadata = {
   title: "Entune",
   description: "Real-time bilingual translation for healthcare visits",
@@ -31,7 +39,8 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${dmSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${dmSans.variable} ${geistMono.variable} ${playfair.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <head>
         {/* Pretendard: Korean typography with matching visual weight to DM Sans */}
@@ -41,7 +50,10 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col">
-        <I18nProvider>{children}</I18nProvider>
+        <ThemeProvider>
+          <I18nProvider>{children}</I18nProvider>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -144,31 +144,41 @@ export async function translateBilingual(
 
   const detectedName = LANGUAGE_NAMES[detectedLanguage];
   const patientLangName = LANGUAGE_NAMES[patientLang];
-  const terms = getTermsList(detectedLanguage);
-  const glossaryEntries = getGlossaryByLanguage(detectedLanguage);
+  const providerLangName = LANGUAGE_NAMES[providerLang];
 
-  const termsList = terms.length > 0
-    ? terms.join(', ')
-    : 'No specific cultural terms registered for this language, but still watch for cultural health concepts.';
+  // Always include glossaries for BOTH languages — Deepgram's language detection
+  // for short phrases is unreliable, and the speech-to-text may romanize non-English
+  // words (e.g. "화병" → "hwa byung"), so Claude needs both glossaries to recognize them.
+  const allTerms = [
+    ...getTermsList(patientLang),
+    ...getTermsList(providerLang),
+  ];
+  const uniqueTerms = [...new Set(allTerms)];
+  const termsList = uniqueTerms.length > 0
+    ? uniqueTerms.join(', ')
+    : 'No specific cultural terms registered, but still watch for cultural health concepts.';
 
-  const glossaryContext = glossaryEntries.length > 0
-    ? glossaryEntries.map(e =>
+  const patientGlossary = getGlossaryByLanguage(patientLang);
+  const providerGlossary = getGlossaryByLanguage(providerLang);
+  const allGlossary = [...patientGlossary, ...providerGlossary];
+  const glossaryContext = allGlossary.length > 0
+    ? allGlossary.map(e =>
       `- ${e.term} (${e.literal}): ${e.clinicalContext}`
     ).join('\n')
     : '';
 
-  const systemPrompt = `You are a medical interpreter in a healthcare visit between an English-speaking provider and a ${patientLangName}-speaking patient. Both are in the same room and a single microphone captures all speech.
+  const systemPrompt = `You are a medical interpreter in a healthcare visit between a ${providerLangName}-speaking provider and a ${patientLangName}-speaking patient.
 
 TASK:
-Given spoken text (detected as ${detectedName}), produce BOTH an English version and a ${patientLangName} version.
+Given spoken text detected as ${detectedName}, produce BOTH an English version and a ${patientLangName} version.
 
 RULES:
-1. If the text is in English, keep it as textEnglish and translate to ${patientLangName} for textPatientLang (simplify medical jargon for the patient).
+1. If the text is in ${providerLangName}, keep it as textEnglish and translate to ${patientLangName} for textPatientLang (simplify medical jargon for the patient).
 2. If the text is in ${patientLangName}, keep it as textPatientLang and translate to English for textEnglish (preserve clinical precision for the provider).
 3. NEVER add medical advice or diagnosis. Only translate and flag cultural concepts.
 
 CULTURAL HEALTH CONCEPT DETECTION:
-Watch for these culturally specific health terms: ${termsList}
+Watch for these culturally specific health terms (including romanized forms): ${termsList}
 
 ${glossaryContext ? `GLOSSARY REFERENCE:\n${glossaryContext}\n` : ''}
 When you detect a cultural health concept, return a cultural_flag object.
@@ -372,20 +382,21 @@ export async function generateDoctorReport(
 
   const systemPrompt = `You are a medical documentation assistant. Generate a SOAP-style clinical note from this bilingual visit transcript.
 
-FORMAT RULES for each field:
-- Use markdown formatting: numbered lists, bullet points, bold for emphasis.
-- For "assessment" and "plan", always use a numbered list (1. 2. 3.) with each item on its own line.
-- For "subjective" and "objective", use bullet points or paragraphs separated by blank lines.
+FORMAT RULES — each JSON string value must contain valid markdown with \\n newlines:
+- For "subjective" and "objective": use markdown bullet lists (- item\\n- item), one finding per line.
+- For "assessment" and "plan": use numbered lists (1. item\\n2. item), one item per line.
+- For "culturalConsiderations": use markdown bullet lists.
 - Use **bold** for critical findings like safety concerns.
+- IMPORTANT: Use \\n for line breaks inside JSON strings. Never use bullet character (•). Always use markdown list syntax (- or 1.).
 - Keep each point concise — one idea per list item.
 
 Return ONLY valid JSON:
 {
-  "subjective": "Patient's reported symptoms, concerns, and history (clinical language, markdown formatted)",
-  "objective": "Observable findings mentioned during the visit (markdown formatted)",
-  "assessment": "Clinical assessment based on the conversation (numbered list)",
-  "plan": "Follow-up items, medications, referrals discussed (numbered list)",
-  "culturalConsiderations": "Cultural health concepts detected and their clinical relevance (markdown formatted)"
+  "subjective": "- Finding one\\n- Finding two\\n- Finding three",
+  "objective": "- Observation one\\n- Observation two",
+  "assessment": "1. **Diagnosis** – explanation\\n2. **Diagnosis** – explanation",
+  "plan": "1. Action item\\n2. Action item",
+  "culturalConsiderations": "- Cultural note one\\n- Cultural note two"
 }
 
 CULTURAL FLAGS DETECTED:

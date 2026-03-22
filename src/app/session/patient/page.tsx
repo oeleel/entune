@@ -13,6 +13,9 @@ import { PatientLanguageSelect } from '@/components/marketing/patient-language-s
 import { toPatientUiLanguage, type PatientUiLanguage } from '@/lib/patient-languages';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { DownloadPdfButton } from '@/components/shared/download-pdf-button';
+import { PatientReportPdf } from '@/lib/pdf/patient-report-pdf';
+import { SessionSkeleton } from '@/components/skeletons/session-skeleton';
 import type { SupportedLanguage, PatientReport } from '@/lib/types';
 
 function PatientSessionContent() {
@@ -134,6 +137,7 @@ function PatientSessionContent() {
             transcript={transcript}
             patientLanguage={patientLang}
             providerLanguage={providerLang}
+            role="patient"
           />
         </div>
       </div>
@@ -149,14 +153,23 @@ function PatientSessionContent() {
             <h1 className="text-2xl font-bold tracking-tight">Entune</h1>
             <p className="text-sm text-muted-foreground">Visit Complete</p>
           </div>
-          <div className="w-40">
-            <PatientLanguageSelect
-              id="sessionPatientLanguageEnded"
-              label=""
-              value={toPatientUiLanguage(patientLang)}
-              onChange={handlePatientLanguageChange}
-              disabled={languageLocked}
-            />
+          <div className="flex items-center gap-2">
+            {patientReport && (
+              <DownloadPdfButton
+                document={<PatientReportPdf report={patientReport} />}
+                fileName={`entune-summary-${visitId}.pdf`}
+                label="Download PDF"
+              />
+            )}
+            <div className="w-40">
+              <PatientLanguageSelect
+                id="sessionPatientLanguageEnded"
+                label=""
+                value={toPatientUiLanguage(patientLang)}
+                onChange={handlePatientLanguageChange}
+                disabled={languageLocked}
+              />
+            </div>
           </div>
         </div>
       </header>
@@ -187,6 +200,7 @@ function PatientSessionContent() {
                         textTranslated={entry.textPatientLang}
                         originalLanguage={providerLang}
                         translatedLanguage={patientLang}
+                        role="patient"
                       />
                     ))}
                   </div>
@@ -276,7 +290,7 @@ function PatientSessionContent() {
 
 export default function PatientSessionPage() {
   return (
-    <Suspense fallback={<p className="p-8 text-muted-foreground">Loading...</p>}>
+    <Suspense fallback={<SessionSkeleton />}>
       <PatientSessionContent />
     </Suspense>
   );

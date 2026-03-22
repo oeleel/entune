@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { joinSession } from '@/lib/api';
 import type { PatientUiLanguage } from '@/lib/patient-languages';
 import { useI18n } from '@/components/providers/i18n-provider';
@@ -56,11 +57,21 @@ export default function JoinPage() {
       <div className="relative z-10 w-full max-w-sm">
         <div className="bg-[var(--entune-bg2)] border border-[var(--entune-border)] rounded-2xl p-8 text-center animate-[entune-fade-up_0.5s_ease_both]">
           {/* Logo */}
-          <div
-            className="text-2xl font-light tracking-[0.12em] lowercase text-[var(--entune-text)] mb-6"
-            style={{ fontFamily: 'var(--font-entune-display), ui-serif, Georgia, serif' }}
-          >
-            entune
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <Image
+              src="/LogoFr.png"
+              alt=""
+              width={100}
+              height={392}
+              priority
+              className="h-14 w-auto"
+            />
+            <span
+              className="text-4xl font-light tracking-[0.12em] lowercase text-[var(--entune-text)]"
+              style={{ fontFamily: 'var(--font-entune-display), ui-serif, Georgia, serif' }}
+            >
+              entune
+            </span>
           </div>
 
           <h1 className="text-2xl font-semibold text-white mb-1">{t('join.title')}</h1>

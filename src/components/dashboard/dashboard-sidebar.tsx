@@ -1,17 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, MessageSquare, Settings } from 'lucide-react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
+import { Sun, Moon, LogOut } from 'lucide-react';
 import { useUser } from '@/hooks/use-user';
+import { createClient } from '@/lib/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-
-export const NAV_ITEMS = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Visits', href: '/dashboard/visits', icon: CalendarDays },
-  { label: 'Chat', href: '/dashboard/chat', icon: MessageSquare },
-  { label: 'Settings', href: '/dashboard/settings', icon: Settings },
-] as const;
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 function getInitials(name: string) {
   return name
@@ -22,89 +23,99 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
-export function DashboardSidebar() {
-  const pathname = usePathname();
+export function DashboardHeader() {
   const { user } = useUser();
+  const { theme, setTheme } = useTheme();
 
   return (
-    <nav aria-label="Dashboard navigation" className="flex flex-col h-full w-full bg-card border-r">
-      {/* Logo — text hidden at tablet, shown at desktop */}
-      <div className="border-b p-4 md:flex md:items-center md:justify-center lg:justify-start">
-        <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
-          <span className="sidebar-label">Entune</span>
-          <span className="sidebar-collapsed-label">E</span>
-        </Link>
-      </div>
+    <header className="flex items-center justify-between h-16 px-6 border-b bg-card">
+      {/* Logo */}
+      <Link href="/dashboard" className="flex items-center gap-2">
+        <Image
+          src="/LogoFr.png"
+          alt=""
+          width={100}
+          height={392}
+          className="h-7 w-auto shrink-0 dark:invert-0 invert"
+        />
+        <span className="text-xl font-bold tracking-[0.08em] lowercase text-foreground">
+          entune
+        </span>
+      </Link>
 
-      {/* Nav Items — icon-only at tablet, full at desktop */}
-      <div className="flex-1 py-2">
-        {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
-          const isActive =
-            href === '/dashboard'
-              ? pathname === '/dashboard'
-              : pathname.startsWith(href);
-
-          return (
-            <Link
-              key={href}
-              href={href}
-              title={label}
-              className={`flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg text-sm font-medium transition-colors md:justify-center md:px-2 md:gap-0 lg:justify-start lg:px-4 lg:gap-3 ${
-                isActive
-                  ? 'bg-teal-50 text-teal-500'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
-            >
-              <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-              <span className="sidebar-label">{label}</span>
-            </Link>
-          );
-        })}
-      </div>
-
-      {/* User section at bottom — avatar only at tablet */}
+      {/* User avatar */}
       {user && (
-        <div className="border-t p-4 flex items-center gap-3 md:justify-center md:gap-0 lg:justify-start lg:gap-3">
-          <Avatar className="h-8 w-8">
-            {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.name} />}
-            <AvatarFallback className="text-xs">{getInitials(user.name)}</AvatarFallback>
-          </Avatar>
-          <div className="sidebar-label min-w-0">
-            <p className="text-sm font-medium truncate">{user.name}</p>
-            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-          </div>
-        </div>
+        <UserPopover user={user} theme={theme} setTheme={setTheme} />
       )}
-    </nav>
+    </header>
   );
 }
 
-export function MobileTabBar() {
-  const pathname = usePathname();
+function UserPopover({
+  user,
+  theme,
+  setTheme,
+}: {
+  user: { name: string; email: string; avatarUrl: string | null };
+  theme: string | undefined;
+  setTheme: (t: string) => void;
+}) {
+  const router = useRouter();
+
+  async function handleSignOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/');
+  }
 
   return (
-    <nav aria-label="Mobile navigation" className="flex items-center justify-around py-2">
-      {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
-        const isActive =
-          href === '/dashboard'
-            ? pathname === '/dashboard'
-            : pathname.startsWith(href);
+    <Popover>
+      <PopoverTrigger
+        render={
+          <button className="flex items-center gap-3 rounded-lg p-1 -m-1 hover:bg-muted transition-colors" />
+        }
+      >
+        <Avatar className="h-8 w-8 shrink-0">
+          {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.name} />}
+          <AvatarFallback className="text-xs">{getInitials(user.name)}</AvatarFallback>
+        </Avatar>
+        <div className="hidden sm:block min-w-0 text-left">
+          <p className="text-sm font-medium truncate">{user.name}</p>
+        </div>
+      </PopoverTrigger>
+      <PopoverContent side="bottom" align="end" className="w-56 !p-1 !gap-0">
+        {/* User info */}
+        <div className="px-3 py-2 text-sm">
+          <p className="font-medium truncate">{user.name}</p>
+          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+        </div>
 
-        return (
-          <Link
-            key={href}
-            href={href}
-            className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              isActive
-                ? 'text-teal-500'
-                : 'text-muted-foreground'
-            }`}
-          >
-            <Icon className="h-5 w-5" aria-hidden="true" />
-            <span>{label}</span>
-          </Link>
-        );
-      })}
-    </nav>
+        <div className="my-1 border-t" />
+
+        {/* Theme toggle */}
+        <button
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          className="flex items-center gap-2 w-full rounded-md px-3 py-2 text-sm hover:bg-muted transition-colors"
+        >
+          {theme === 'dark' ? (
+            <Sun className="h-4 w-4" />
+          ) : (
+            <Moon className="h-4 w-4" />
+          )}
+          {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+        </button>
+
+        <div className="my-1 border-t" />
+
+        {/* Sign out */}
+        <button
+          onClick={handleSignOut}
+          className="flex items-center gap-2 w-full rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+        >
+          <LogOut className="h-4 w-4" />
+          Sign Out
+        </button>
+      </PopoverContent>
+    </Popover>
   );
 }

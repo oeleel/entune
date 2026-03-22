@@ -15,6 +15,8 @@ type TranscriptContainerProps = {
   providerLanguage: SupportedLanguage;
   emptyMessage?: string;
   interimText?: string;
+  /** Which side is viewing — determines which language is shown larger */
+  role?: 'provider' | 'patient';
 };
 
 export function TranscriptContainer({
@@ -23,6 +25,7 @@ export function TranscriptContainer({
   providerLanguage,
   emptyMessage = 'Waiting for conversation to begin...',
   interimText,
+  role = 'provider',
 }: TranscriptContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -86,26 +89,30 @@ export function TranscriptContainer({
           </div>
         ) : (
           <>
-            {transcript.map((entry, i) => (
-              <div key={i}>
-                <TranscriptEntryCard
-                  textOriginal={entry.textEnglish}
-                  textTranslated={entry.textPatientLang}
-                  originalLanguage={providerLanguage}
-                  translatedLanguage={patientLanguage}
-                />
-                {entry.culturalFlag && (
-                  <div className="py-2 px-2">
-                    <CulturalFlagCard flag={entry.culturalFlag} />
-                  </div>
-                )}
-              </div>
-            ))}
-            {interimText && (
-              <div className="py-4 opacity-50">
-                <p className="transcript-text italic">{interimText}</p>
-              </div>
-            )}
+            <div className="space-y-3">
+              {transcript.map((entry, i) => (
+                <div key={i}>
+                  <TranscriptEntryCard
+                    textOriginal={entry.textEnglish}
+                    textTranslated={entry.textPatientLang}
+                    originalLanguage={providerLanguage}
+                    translatedLanguage={patientLanguage}
+                    timestamp={entry.timestamp}
+                    role={role}
+                  />
+                  {entry.culturalFlag && (
+                    <div className="pt-2">
+                      <CulturalFlagCard flag={entry.culturalFlag} />
+                    </div>
+                  )}
+                </div>
+              ))}
+              {interimText && (
+                <div className="rounded-lg p-3 bg-muted/30 border border-dashed border-muted-foreground/20">
+                  <p className="transcript-text text-muted-foreground italic">{interimText}</p>
+                </div>
+              )}
+            </div>
           </>
         )}
         <div ref={anchorRef} />

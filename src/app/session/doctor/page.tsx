@@ -10,8 +10,8 @@ import { useRealtimeTranscript } from '@/hooks/use-realtime-transcript';
 import { useDeepgramTranscript } from '@/hooks/use-deepgram-transcript';
 import { createClient } from '@/lib/supabase/client';
 import { endSession } from '@/lib/api';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { SessionSkeleton } from '@/components/skeletons/session-skeleton';
 import type { SupportedLanguage } from '@/lib/types';
 
 function DoctorSessionContent() {
@@ -32,6 +32,7 @@ function DoctorSessionContent() {
     interimText,
     isConnected,
     error: deepgramError,
+    audioLevel,
     startListening,
     stopListening: stopDeepgram,
   } = useDeepgramTranscript();
@@ -96,7 +97,7 @@ function DoctorSessionContent() {
 
     try {
       await endSession(visitId);
-      router.push('/dashboard');
+      router.push(`/dashboard/visit/${visitId}`);
     } catch (err) {
       console.error('Failed to end session:', err);
       setIsEnding(false);
@@ -130,22 +131,6 @@ function DoctorSessionContent() {
     );
   }
 
-  // Session ended
-  if (status === 'ended') {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-6">
-        <Card className="w-full max-w-sm">
-          <CardContent className="py-16 text-center space-y-4">
-            <p className="text-muted-foreground">Session has ended.</p>
-            <Button onClick={() => router.push('/dashboard')}>
-              Back to Dashboard
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   // Active session
   return (
     <div className="min-h-screen bg-background">
@@ -153,6 +138,7 @@ function DoctorSessionContent() {
         patientLanguage={patientLang}
         providerLanguage={providerLang}
         isRecording={isConnected}
+        audioLevel={audioLevel}
         onEndVisit={handleEndSession}
         isEnding={isEnding}
       />
@@ -179,7 +165,7 @@ function DoctorSessionContent() {
 export default function DoctorSessionPage() {
   return (
     <AuthGuard>
-      <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>}>
+      <Suspense fallback={<SessionSkeleton />}>
         <DoctorSessionContent />
       </Suspense>
     </AuthGuard>

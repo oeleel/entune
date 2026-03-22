@@ -30,6 +30,22 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check for an existing active session
+    const { data: existing } = await supabase
+      .from('visits')
+      .select('id, status')
+      .eq('user_id', user.id)
+      .in('status', ['waiting', 'active'])
+      .limit(1)
+      .maybeSingle();
+
+    if (existing) {
+      return NextResponse.json(
+        { error: `You already have a session in progress (${existing.status}). End it before starting a new one.` },
+        { status: 409 }
+      );
+    }
+
     // Retry loop for join code uniqueness collisions
     for (let attempt = 0; attempt < MAX_JOIN_CODE_RETRIES; attempt++) {
       const joinCode = generateJoinCode();

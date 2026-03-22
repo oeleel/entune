@@ -7,6 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { createClient } from '@/lib/supabase/client';
+import { DownloadPdfButton } from '@/components/shared/download-pdf-button';
+import { DoctorReportPdf } from '@/lib/pdf/doctor-report-pdf';
+import { PatientReportPdf } from '@/lib/pdf/patient-report-pdf';
+import { SummarySkeleton } from '@/components/skeletons/summary-skeleton';
 import type { PatientReport, DoctorReport } from '@/lib/types';
 
 export default function SummaryPage() {
@@ -42,11 +46,7 @@ export default function SummaryPage() {
   }, [visitId]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Loading summary...</p>
-      </div>
-    );
+    return <SummarySkeleton />;
   }
 
   if (error || !patientReport) {
@@ -64,9 +64,23 @@ export default function SummaryPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b px-6 py-3 flex items-center justify-between">
         <h1 className="text-xl font-bold">Entune — Visit Summary</h1>
-        <Link href="/dashboard">
-          <Button variant="outline" size="sm">Back to Dashboard</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <DownloadPdfButton
+            document={<PatientReportPdf report={patientReport} />}
+            fileName={`entune-patient-summary-${visitId}.pdf`}
+            label="Patient Summary (PDF)"
+          />
+          {doctorReport && (
+            <DownloadPdfButton
+              document={<DoctorReportPdf report={doctorReport} />}
+              fileName={`entune-soap-${visitId}.pdf`}
+              label="SOAP Note (PDF)"
+            />
+          )}
+          <Link href="/dashboard">
+            <Button variant="outline" size="sm">Back to Dashboard</Button>
+          </Link>
+        </div>
       </header>
 
       <div className="max-w-4xl mx-auto p-6 space-y-6">

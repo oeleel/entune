@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export function NavBar() {
   const [scrolled, setScrolled] = useState(false);
@@ -22,10 +23,17 @@ export function NavBar() {
     >
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link
-          href="/"
-          className="text-xl font-light tracking-[0.12em] lowercase text-[var(--entune-text)] hover:text-[var(--entune-teal)] transition-colors"
+          href="/about"
+          className="flex items-center gap-2 text-xl font-light tracking-[0.12em] lowercase text-[var(--entune-text)] hover:text-[var(--entune-teal)] transition-colors"
           style={{ fontFamily: 'var(--font-entune-display), ui-serif, Georgia, serif' }}
         >
+          <Image
+            src="/LogoFr.png"
+            alt=""
+            width={100}
+            height={392}
+            className="h-7 w-auto"
+          />
           entune
         </Link>
         <div className="flex items-center gap-3">

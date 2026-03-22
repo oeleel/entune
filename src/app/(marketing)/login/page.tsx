@@ -1,14 +1,26 @@
 'use client';
 
 import { Suspense, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
+import { LoginSkeleton } from '@/components/skeletons/login-skeleton';
+import { useI18n } from '@/components/providers/i18n-provider';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 
 function LoginForm() {
+  const { t } = useI18n();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const authError = searchParams.get('error') === 'auth';
+
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   const handleGoogleSignIn = async () => {
     if (!isSupabaseConfigured()) {
@@ -38,6 +50,50 @@ function LoginForm() {
     }
   };
 
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isSupabaseConfigured()) {
+      setError('Authentication service is not configured. Please try again later.');
+      return;
+    }
+    setError(null);
+    setMessage(null);
+    setLoading(true);
+
+    try {
+      const supabase = createClient();
+
+      if (mode === 'register') {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { full_name: name },
+          },
+        });
+        if (signUpError) {
+          setError(signUpError.message);
+        } else {
+          setMessage(t('login.confirmEmail'));
+        }
+      } else {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (signInError) {
+          setError(signInError.message);
+        } else {
+          router.push('/dashboard');
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <main className="entune-page relative flex min-h-screen items-center justify-center px-6">
       {/* Gradient background */}
@@ -54,24 +110,129 @@ function LoginForm() {
         {/* Card */}
         <div className="bg-[var(--entune-bg2)] border border-[var(--entune-border)] rounded-2xl p-8 text-center animate-[entune-fade-up_0.5s_ease_both]">
           {/* Logo */}
-          <div
-            className="text-2xl font-light tracking-[0.12em] lowercase text-[var(--entune-text)] mb-6"
-            style={{ fontFamily: 'var(--font-entune-display), ui-serif, Georgia, serif' }}
-          >
-            entune
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <Image
+              src="/LogoFr.png"
+              alt=""
+              width={100}
+              height={392}
+              priority
+              className="h-14 w-auto"
+            />
+            <span className="text-4xl font-bold tracking-[0.08em] lowercase text-[var(--entune-text)]">
+              entune
+            </span>
           </div>
 
-          <h1 className="text-2xl font-semibold text-white mb-1">Sign in to Entune</h1>
-          <p className="text-sm text-[var(--entune-text-mid)] mb-8">
-            Medical interpretation, reimagined.
+          <h1 className="text-2xl font-semibold text-white mb-1">
+            {mode === 'login' ? t('login.title') : t('login.titleRegister')}
+          </h1>
+          <p className="text-sm text-[var(--entune-text-mid)] mb-6">
+            {t('login.sub')}
           </p>
 
           {authError && (
             <p className="text-sm text-[var(--entune-red)] mb-4">
-              Sign-in failed. Please try again.
+              {t('login.authFailed')}
             </p>
           )}
           {error && <p className="text-sm text-[var(--entune-red)] mb-4">{error}</p>}
+          {message && <p className="text-sm text-[var(--entune-teal)] mb-4">{message}</p>}
+
+          {/* Email/password form */}
+          <form onSubmit={handleEmailAuth} className="space-y-3 mb-4 text-left">
+            {mode === 'register' && (
+              <div>
+                <label htmlFor="name" className="block text-xs text-[var(--entune-text-mid)] mb-1">
+                  {t('login.fullName')}
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t('login.fullNamePlaceholder')}
+                  autoComplete="name"
+                  required
+                  className="w-full rounded-lg border border-[var(--entune-border)] bg-[var(--entune-bg)] px-3 py-2 text-sm text-[var(--entune-text)] placeholder:text-[var(--entune-text-dim)] focus:outline-none focus:ring-2 focus:ring-[var(--entune-teal)]/40"
+                />
+              </div>
+            )}
+            <div>
+              <label htmlFor="email" className="block text-xs text-[var(--entune-text-mid)] mb-1">
+                {t('login.email')}
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t('login.emailPlaceholder')}
+                autoComplete="email"
+                required
+                className="w-full rounded-lg border border-[var(--entune-border)] bg-[var(--entune-bg)] px-3 py-2 text-sm text-[var(--entune-text)] placeholder:text-[var(--entune-text-dim)] focus:outline-none focus:ring-2 focus:ring-[var(--entune-teal)]/40"
+              />
+            </div>
+            <div>
+              <label htmlFor="password" className="block text-xs text-[var(--entune-text-mid)] mb-1">
+                {t('login.password')}
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                required
+                minLength={6}
+                className="w-full rounded-lg border border-[var(--entune-border)] bg-[var(--entune-bg)] px-3 py-2 text-sm text-[var(--entune-text)] placeholder:text-[var(--entune-text-dim)] focus:outline-none focus:ring-2 focus:ring-[var(--entune-teal)]/40"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="entune-btn-oauth w-full !justify-center font-medium disabled:opacity-50"
+            >
+              {loading
+                ? (mode === 'login' ? t('login.signingIn') : t('login.creatingAccount'))
+                : (mode === 'login' ? t('login.signIn') : t('login.createAccount'))}
+            </button>
+          </form>
+
+          {/* Toggle login/register */}
+          <p className="text-xs text-[var(--entune-text-dim)] mb-4">
+            {mode === 'login' ? (
+              <>
+                {t('login.noAccount')}{' '}
+                <button
+                  type="button"
+                  onClick={() => { setMode('register'); setError(null); setMessage(null); }}
+                  className="text-[var(--entune-teal)] hover:underline"
+                >
+                  {t('login.register')}
+                </button>
+              </>
+            ) : (
+              <>
+                {t('login.haveAccount')}{' '}
+                <button
+                  type="button"
+                  onClick={() => { setMode('login'); setError(null); setMessage(null); }}
+                  className="text-[var(--entune-teal)] hover:underline"
+                >
+                  {t('login.signIn')}
+                </button>
+              </>
+            )}
+          </p>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 h-px bg-[var(--entune-border)]" />
+            <span className="text-xs text-[var(--entune-text-dim)]">{t('login.or')}</span>
+            <div className="flex-1 h-px bg-[var(--entune-border)]" />
+          </div>
 
           <button
             type="button"
@@ -96,19 +257,19 @@ function LoginForm() {
                 fill="#EA4335"
               />
             </svg>
-            Continue with Google
+            {t('login.google')}
           </button>
         </div>
 
         {/* Footer text */}
         <p className="text-xs text-[var(--entune-text-dim)] text-center mt-6 leading-relaxed">
-          By signing in, you agree to our Terms of Service and Privacy Policy.
+          {t('login.terms')}
         </p>
 
         <p className="text-xs text-[var(--entune-text-dim)] text-center mt-4">
-          Are you a patient?{' '}
+          {t('login.patientPrompt')}{' '}
           <Link href="/join" className="text-[var(--entune-teal)] hover:underline">
-            Join a session instead
+            {t('login.joinInstead')}
           </Link>
         </p>
       </div>
@@ -118,7 +279,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<LoginSkeleton />}>
       <LoginForm />
     </Suspense>
   );

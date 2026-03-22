@@ -1,12 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AuthGuard } from '@/components/shared/auth-guard';
 import { useUser } from '@/hooks/use-user';
 import { ChatInterface } from '@/components/dashboard/chat-interface';
 import { createClient } from '@/lib/supabase/client';
+import { deleteVisits } from '@/lib/api';
+import { DownloadPdfButton } from '@/components/shared/download-pdf-button';
+import { TranscriptPdf } from '@/lib/pdf/transcript-pdf';
+import { DoctorReportPdf } from '@/lib/pdf/doctor-report-pdf';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,18 +28,13 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import Markdown from 'react-markdown';
+import { VisitDetailSkeleton } from '@/components/skeletons/visit-detail-skeleton';
 import type { PatientReport, DoctorReport } from '@/lib/types';
 
 const LANGUAGE_LABELS: Record<string, string> = {
   'en-US': 'English',
   'ko-KR': 'Korean',
   'es-ES': 'Spanish',
-};
-
-const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
-  waiting: 'outline',
-  active: 'default',
-  ended: 'secondary',
 };
 
 type Visit = {
@@ -128,21 +127,45 @@ function VisitDetailContent() {
     fetchData();
   }, [user, visitId]);
 
-  async function handleDeleteVisit() {
-    setIsDeleting(true);
-    const supabase = createClient();
-    const { error: deleteError } = await supabase
-      .from('visits')
-      .delete()
-      .eq('id', visitId);
+  // Poll for reports when visit is ended but reports are missing
+  const pollRef = useRef<ReturnType<typeof setInterval>>(null);
+  useEffect(() => {
+    const reportsReady = doctorReport && patientReport;
+    const shouldPoll = visit?.status === 'ended' && !reportsReady && !loading;
 
-    if (deleteError) {
-      setError('Failed to delete visit.');
-      setIsDeleting(false);
+    if (!shouldPoll) {
+      if (pollRef.current) clearInterval(pollRef.current);
       return;
     }
 
-    router.push('/dashboard');
+    pollRef.current = setInterval(async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('visit_summaries')
+        .select('patient_report, doctor_report')
+        .eq('visit_id', visitId)
+        .single();
+
+      if (data?.doctor_report && data?.patient_report) {
+        setDoctorReport(data.doctor_report as DoctorReport);
+        setPatientReport(data.patient_report as PatientReport);
+      }
+    }, 3000);
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [visit?.status, doctorReport, patientReport, loading, visitId]);
+
+  async function handleDeleteVisit() {
+    setIsDeleting(true);
+    try {
+      await deleteVisits([visitId]);
+      router.push('/dashboard');
+    } catch {
+      setError('Failed to delete visit.');
+      setIsDeleting(false);
+    }
   }
 
   function renderTranscript() {
@@ -184,11 +207,7 @@ function VisitDetailContent() {
   if (!user) return null;
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Loading visit...</p>
-      </div>
-    );
+    return <VisitDetailSkeleton />;
   }
 
   if (error || !visit) {
@@ -204,6 +223,7 @@ function VisitDetailContent() {
 
   const hasCulturalFlags = doctorReport?.culturalFlags && doctorReport.culturalFlags.length > 0;
   const hasReports = visit.status === 'ended' && (patientReport || doctorReport);
+  const reportsGenerating = visit.status === 'ended' && !doctorReport && !patientReport;
 
   return (
     <div className="min-h-screen bg-background">
@@ -217,22 +237,23 @@ function VisitDetailContent() {
               </Button>
             </Link>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-semibold">
+              <h1 className="text-xl font-bold">
+                {visit.patient_name || 'Unknown Patient'}
+              </h1>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>
                   {new Date(visit.started_at).toLocaleDateString('en-US', {
-                    month: 'long',
+                    month: 'short',
                     day: 'numeric',
                     year: 'numeric',
                   })}
-                </h1>
-                <span className="text-muted-foreground">
+                  {' \u00B7 '}
                   {new Date(visit.started_at).toLocaleTimeString('en-US', {
                     hour: 'numeric',
                     minute: '2-digit',
                   })}
                 </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Separator orientation="vertical" className="h-4" />
                 <Badge variant="outline" className="text-xs">
                   {LANGUAGE_LABELS[visit.language_patient] || visit.language_patient}
                 </Badge>
@@ -240,19 +261,42 @@ function VisitDetailContent() {
                 <Badge variant="outline" className="text-xs">
                   {LANGUAGE_LABELS[visit.language_provider] || visit.language_provider}
                 </Badge>
-                {visit.patient_name && (
-                  <>
-                    <Separator orientation="vertical" className="h-4" />
-                    <span>{visit.patient_name}</span>
-                  </>
-                )}
               </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Badge variant={STATUS_VARIANT[visit.status] || 'outline'}>
-              {visit.status}
-            </Badge>
+            {transcript.length > 0 && (
+              <DownloadPdfButton
+                document={
+                  <TranscriptPdf
+                    transcript={transcript}
+                    patientName={visit.patient_name}
+                    visitDate={visit.started_at}
+                    patientLanguage={visit.language_patient}
+                    providerLanguage={visit.language_provider}
+                  />
+                }
+                fileName={`entune-transcript-${visit.patient_name || visit.id}.pdf`}
+                label="Export Transcript"
+              />
+            )}
+            {doctorReport ? (
+              <DownloadPdfButton
+                document={
+                  <DoctorReportPdf
+                    report={doctorReport}
+                    patientName={visit.patient_name}
+                    culturalFlags={doctorReport.culturalFlags}
+                  />
+                }
+                fileName={`entune-soap-${visit.patient_name || visit.id}.pdf`}
+                label="Export SOAP"
+              />
+            ) : reportsGenerating ? (
+              <Button variant="outline" size="sm" disabled>
+                Generating SOAP...
+              </Button>
+            ) : null}
             <AlertDialog>
               <AlertDialogTrigger
                 render={<Button variant="destructive" size="sm" disabled={isDeleting} />}
@@ -285,8 +329,8 @@ function VisitDetailContent() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left column — Reports + Transcript */}
           <div className="lg:col-span-2">
-            {hasReports ? (
-              <Tabs defaultValue="summary" className="flex flex-col h-[calc(100vh-11rem)]">
+            {hasReports || reportsGenerating ? (
+              <Tabs defaultValue={reportsGenerating ? 'transcript' : 'summary'} className="flex flex-col h-[calc(100vh-11rem)]">
                 <TabsList className="w-full justify-start shrink-0">
                   <TabsTrigger value="summary">Summary</TabsTrigger>
                   <TabsTrigger value="soap">SOAP</TabsTrigger>
@@ -321,13 +365,8 @@ function VisitDetailContent() {
                           <p className="text-sm font-medium mb-2">Follow-ups</p>
                           <ul className="space-y-1">
                             {patientReport.followUps.map((fu, i) => (
-                              <li key={i} className="flex justify-between items-start text-sm">
-                                <span>{fu.itemEnglish || fu.item}</span>
-                                {fu.date && (
-                                  <span className="text-muted-foreground ml-4 whitespace-nowrap">
-                                    {fu.date}
-                                  </span>
-                                )}
+                              <li key={i} className="text-sm">
+                                {fu.itemEnglish || fu.item}
                               </li>
                             ))}
                           </ul>
@@ -346,7 +385,9 @@ function VisitDetailContent() {
                       )}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">No patient summary available.</p>
+                    <div className="flex items-center justify-center py-12">
+                      <p className="text-sm text-muted-foreground animate-pulse">Generating patient summary...</p>
+                    </div>
                   )}
                 </TabsContent>
 
@@ -378,7 +419,9 @@ function VisitDetailContent() {
                       )}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">No provider notes available.</p>
+                    <div className="flex items-center justify-center py-12">
+                      <p className="text-sm text-muted-foreground animate-pulse">Generating SOAP note...</p>
+                    </div>
                   )}
                 </TabsContent>
 

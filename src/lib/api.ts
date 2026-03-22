@@ -8,8 +8,6 @@ import type {
   SupportedLanguage,
   ChatRequest,
   ChatResponse,
-  DoctorReport,
-  PatientReport,
 } from './types';
 import type { PatientUiLanguage } from '@/lib/patient-languages';
 
@@ -78,7 +76,10 @@ export async function createSession(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ patientLanguage, providerLanguage }),
   });
-  if (!res.ok) throw new Error(`Create session failed: ${res.statusText}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error || `Create session failed: ${res.statusText}`);
+  }
   return res.json();
 }
 
@@ -121,12 +122,27 @@ export async function updatePatientSessionLanguage(
 
 export async function endSession(
   visitId: string
-): Promise<{ doctorReport: DoctorReport; patientReport: PatientReport }> {
+): Promise<{ visitId: string }> {
   const res = await fetch('/api/session/end', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ visitId }),
   });
   if (!res.ok) throw new Error(`End session failed: ${res.statusText}`);
+  return res.json();
+}
+
+export async function deleteVisits(
+  visitIds: string[]
+): Promise<{ deleted: string[]; count: number }> {
+  const res = await fetch('/api/visits/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ visitIds }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error || `Delete visits failed: ${res.statusText}`);
+  }
   return res.json();
 }

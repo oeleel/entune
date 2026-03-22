@@ -6,6 +6,7 @@ import {
   ThreadPrimitive,
   ComposerPrimitive,
   MessagePrimitive,
+  useThreadRuntime,
 } from '@assistant-ui/react';
 import { MarkdownTextPrimitive } from '@assistant-ui/react-markdown';
 import '@assistant-ui/react-markdown/styles/dot.css';
@@ -21,10 +22,10 @@ type ChatInterfaceProps = {
 };
 
 const SUGGESTED_QUESTIONS = [
-  'What medications were prescribed?',
-  'What follow-ups do I need?',
-  'Summarize my last visit',
-  'What warning signs should I watch for?',
+  'What medications were prescribed for this patient?',
+  'Summarize the chief complaint',
+  'Were any cultural flags detected?',
+  'What follow-ups were discussed?',
 ];
 
 export function ChatInterface({ userId, preferredLanguage, visitId }: ChatInterfaceProps) {
@@ -73,7 +74,7 @@ export function ChatInterface({ userId, preferredLanguage, visitId }: ChatInterf
           <div className="border-t p-3">
             <ComposerPrimitive.Root className="flex items-end gap-2">
               <ComposerPrimitive.Input
-                placeholder="Ask about your visit history..."
+                placeholder="Ask about this visit..."
                 className="flex-1 rounded-xl border border-input bg-background px-4 py-2.5 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[40px] max-h-[120px] resize-none"
               />
               <ComposerPrimitive.Send className="inline-flex items-center justify-center rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-10 w-10 shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
@@ -88,6 +89,8 @@ export function ChatInterface({ userId, preferredLanguage, visitId }: ChatInterf
 }
 
 function EmptyState() {
+  const threadRuntime = useThreadRuntime();
+
   return (
     <div className="flex flex-col items-center justify-center h-full text-center px-4 py-8">
       <div className="rounded-full bg-primary/10 p-3 mb-4">
@@ -95,18 +98,23 @@ function EmptyState() {
       </div>
       <p className="text-sm font-medium mb-1">Visit Assistant</p>
       <p className="text-xs text-muted-foreground mb-6">
-        Ask me anything about your past visits
+        Ask about this patient&apos;s visit
       </p>
       <div className="flex flex-wrap justify-center gap-2">
         {SUGGESTED_QUESTIONS.map((q) => (
-          <ComposerPrimitive.Root key={q}>
-            <ComposerPrimitive.Send
-              className="text-xs px-3 py-1.5 rounded-full border bg-card hover:bg-muted transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
-              data-value={q}
-            >
-              {q}
-            </ComposerPrimitive.Send>
-          </ComposerPrimitive.Root>
+          <button
+            key={q}
+            type="button"
+            className="text-xs px-3 py-1.5 rounded-full border bg-card hover:bg-muted transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
+            onClick={() => {
+              threadRuntime.append({
+                role: 'user',
+                content: [{ type: 'text', text: q }],
+              });
+            }}
+          >
+            {q}
+          </button>
         ))}
       </div>
     </div>

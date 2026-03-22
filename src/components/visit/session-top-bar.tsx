@@ -13,10 +13,34 @@ const LANGUAGE_NATIVE: Record<SupportedLanguage, string> = {
   'es-ES': 'Español',
 };
 
+function AudioLevelBars({ level }: { level: number }) {
+  const barCount = 4;
+  return (
+    <div className="flex items-end gap-[2px] h-3.5" aria-label={`Audio level: ${Math.round(level * 100)}%`}>
+      {Array.from({ length: barCount }, (_, i) => {
+        const threshold = (i + 1) / barCount;
+        const active = level >= threshold * 0.6;
+        return (
+          <div
+            key={i}
+            className="w-[3px] rounded-full transition-all duration-75"
+            style={{
+              height: `${40 + (i + 1) * 15}%`,
+              backgroundColor: active ? 'var(--color-primary)' : 'var(--color-muted-foreground)',
+              opacity: active ? 1 : 0.25,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 type SessionTopBarProps = {
   patientLanguage: SupportedLanguage;
   providerLanguage: SupportedLanguage;
   isRecording: boolean;
+  audioLevel?: number;
   onEndVisit?: () => void;
   isEnding?: boolean;
 };
@@ -25,6 +49,7 @@ export function SessionTopBar({
   patientLanguage,
   providerLanguage,
   isRecording,
+  audioLevel = 0,
   onEndVisit,
   isEnding,
 }: SessionTopBarProps) {
@@ -71,9 +96,9 @@ export function SessionTopBar({
         </button>
 
         {isRecording && (
-          <span className="flex items-center gap-1.5 text-xs text-red-500">
-            <span className="recording-dot inline-block w-2 h-2 rounded-full bg-red-500" />
-            <span className="hidden sm:inline">Recording</span>
+          <span className="flex items-center gap-2 text-xs text-muted-foreground">
+            <AudioLevelBars level={audioLevel} />
+            <span className="hidden sm:inline">Listening</span>
           </span>
         )}
         {onEndVisit && (
