@@ -2,8 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within, fireEvent } from '@testing-library/react';
 
 // Mock next/navigation
+const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
-  useRouter: vi.fn(() => ({ push: vi.fn() })),
+  useRouter: () => ({ push: mockPush }),
 }));
 
 // Mock useUser hook
@@ -187,6 +188,17 @@ describe('DashboardPage — quick stats and visit grid', () => {
     render(<DashboardPage />);
 
     expect(await screen.findByText('New Session')).toBeInTheDocument();
+  });
+
+  it('navigates to visit detail page when card is clicked', async () => {
+    render(<DashboardPage />);
+
+    await screen.findByText('Park Soo-jin');
+
+    const parkCard = screen.getByText('Park Soo-jin').closest('button') as HTMLElement;
+    fireEvent.click(parkCard);
+
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/visit/v1');
   });
 
   it('returns null when user is not authenticated', () => {
