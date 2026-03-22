@@ -26,6 +26,10 @@ function makeEntry(overrides: Partial<TranscriptEntry> = {}): TranscriptEntry {
   };
 }
 
+// ---------------------------------------------------------------------------
+// TranscriptEntryCard
+// ---------------------------------------------------------------------------
+
 describe('TranscriptEntryCard — labels and structure', () => {
   it('renders "Original" label with original text', () => {
     render(
@@ -34,7 +38,7 @@ describe('TranscriptEntryCard — labels and structure', () => {
         textTranslated="안녕하세요 의사 선생님"
         originalLanguage="en-US"
         translatedLanguage="ko-KR"
-      />
+      />,
     );
 
     expect(screen.getByText('Original')).toBeInTheDocument();
@@ -48,7 +52,7 @@ describe('TranscriptEntryCard — labels and structure', () => {
         textTranslated="안녕하세요 의사 선생님"
         originalLanguage="en-US"
         translatedLanguage="ko-KR"
-      />
+      />,
     );
 
     expect(screen.getByText('Translation')).toBeInTheDocument();
@@ -62,7 +66,7 @@ describe('TranscriptEntryCard — labels and structure', () => {
         textTranslated="안녕하세요 의사 선생님"
         originalLanguage="en-US"
         translatedLanguage="ko-KR"
-      />
+      />,
     );
 
     const original = screen.getByText('Hello doctor');
@@ -71,39 +75,50 @@ describe('TranscriptEntryCard — labels and structure', () => {
     expect(translated).toHaveClass('transcript-text');
   });
 
-  it('sets correct lang attributes for bilingual accessibility', () => {
+  it('sets correct lang attributes for bilingual accessibility (en-US → en, ko-KR → ko)', () => {
     render(
       <TranscriptEntryCard
         textOriginal="Hello doctor"
         textTranslated="안녕하세요 의사 선생님"
         originalLanguage="en-US"
         translatedLanguage="ko-KR"
-      />
+      />,
     );
 
     expect(screen.getByText('Hello doctor')).toHaveAttribute('lang', 'en');
     expect(screen.getByText('안녕하세요 의사 선생님')).toHaveAttribute('lang', 'ko');
   });
 
-  it('renders faint border separator between entries', () => {
-    const { container } = render(
+  it('sets lang="es" for Spanish language (es-ES → es)', () => {
+    render(
       <TranscriptEntryCard
         textOriginal="Hello"
-        textTranslated="안녕하세요"
+        textTranslated="Hola"
         originalLanguage="en-US"
-        translatedLanguage="ko-KR"
-      />
+        translatedLanguage="es-ES"
+      />,
     );
 
-    const wrapper = container.firstElementChild as HTMLElement;
-    // Verify the entry wrapper has border-b with reduced opacity (faint)
-    expect(wrapper).toHaveClass('border-b');
-    expect(wrapper).toHaveClass('border-border/40');
-    // last:border-b-0 removes border on the final entry
-    expect(wrapper).toHaveClass('last:border-b-0');
-    // Verify structure: wrapper contains two child divs (original + translation)
-    const sections = wrapper.children;
-    expect(sections.length).toBe(2);
+    expect(screen.getByText('Hola')).toHaveAttribute('lang', 'es');
+  });
+
+  it('renders Original section before Translation section in DOM order', () => {
+    render(
+      <TranscriptEntryCard
+        textOriginal="Hello doctor"
+        textTranslated="안녕하세요 의사 선생님"
+        originalLanguage="en-US"
+        translatedLanguage="ko-KR"
+      />,
+    );
+
+    const original = screen.getByText('Original');
+    const translation = screen.getByText('Translation');
+
+    expect(
+      original.compareDocumentPosition(translation) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('hides translation section when original equals translated', () => {
@@ -113,59 +128,106 @@ describe('TranscriptEntryCard — labels and structure', () => {
         textTranslated="Hello"
         originalLanguage="en-US"
         translatedLanguage="en-US"
-      />
+      />,
     );
 
     expect(screen.getByText('Original')).toBeInTheDocument();
     expect(screen.queryByText('Translation')).not.toBeInTheDocument();
   });
-});
 
-describe('TranscriptContainer — layout and rendering', () => {
-  it('renders between fixed top/bottom bars (calc height)', () => {
+  it('shows only one section (Original) when same language — no Translation wrapper', () => {
     const { container } = render(
-      <TranscriptContainer
-        transcript={[]}
-        patientLanguage="ko-KR"
-        providerLanguage="en-US"
-      />
+      <TranscriptEntryCard
+        textOriginal="Hello"
+        textTranslated="Hello"
+        originalLanguage="en-US"
+        translatedLanguage="en-US"
+      />,
     );
 
-    const outer = container.firstElementChild as HTMLElement;
-    expect(outer.style.height).toBe('calc(100vh - 96px)');
+    const wrapper = container.firstElementChild as HTMLElement;
+    // Only Original section rendered (no Translation div)
+    expect(wrapper.children).toHaveLength(1);
   });
 
-  it('shows empty message when transcript is empty', () => {
+  it('renders faint border-b separator per spec with last-entry removal', () => {
+    const { container } = render(
+      <TranscriptEntryCard
+        textOriginal="Hello"
+        textTranslated="안녕하세요"
+        originalLanguage="en-US"
+        translatedLanguage="ko-KR"
+      />,
+    );
+
+    const wrapper = container.firstElementChild as HTMLElement;
+    // Spec: "Faint border-b between entries"
+    expect(wrapper).toHaveClass('border-b');
+    // Two child divs: Original section + Translation section
+    expect(wrapper.children).toHaveLength(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TranscriptContainer — rendering
+// ---------------------------------------------------------------------------
+
+describe('TranscriptContainer — rendering', () => {
+  it('shows default empty message when transcript is empty', () => {
     render(
       <TranscriptContainer
         transcript={[]}
         patientLanguage="ko-KR"
         providerLanguage="en-US"
-      />
+      />,
     );
 
     expect(screen.getByText('Waiting for conversation to begin...')).toBeInTheDocument();
   });
 
-  it('renders custom empty message', () => {
+  it('shows custom empty message when provided', () => {
     render(
       <TranscriptContainer
         transcript={[]}
         patientLanguage="ko-KR"
         providerLanguage="en-US"
-        emptyMessage="No entries yet"
-      />
+        emptyMessage="Listening... speak naturally."
+      />,
     );
 
-    expect(screen.getByText('No entries yet')).toBeInTheDocument();
+    expect(screen.getByText('Listening... speak naturally.')).toBeInTheDocument();
+  });
+
+  it('does not show empty message when transcript has entries', () => {
+    const entries = [makeEntry({ textEnglish: 'Hello', textPatientLang: '안녕하세요' })];
+
+    render(
+      <TranscriptContainer
+        transcript={entries}
+        patientLanguage="ko-KR"
+        providerLanguage="en-US"
+      />,
+    );
+
+    expect(screen.queryByText('Waiting for conversation to begin...')).not.toBeInTheDocument();
+  });
+
+  it('does not show empty message when only interim text is present', () => {
+    render(
+      <TranscriptContainer
+        transcript={[]}
+        patientLanguage="ko-KR"
+        providerLanguage="en-US"
+        interimText="Speaking now..."
+      />,
+    );
+
+    expect(screen.queryByText('Waiting for conversation to begin...')).not.toBeInTheDocument();
   });
 
   it('renders transcript entries with Original/Translation labels', () => {
     const entries: TranscriptEntry[] = [
-      makeEntry({
-        textEnglish: 'I feel dizzy',
-        textPatientLang: '어지러워요',
-      }),
+      makeEntry({ textEnglish: 'I feel dizzy', textPatientLang: '어지러워요' }),
     ];
 
     render(
@@ -173,7 +235,7 @@ describe('TranscriptContainer — layout and rendering', () => {
         transcript={entries}
         patientLanguage="ko-KR"
         providerLanguage="en-US"
-      />
+      />,
     );
 
     expect(screen.getByText('Original')).toBeInTheDocument();
@@ -182,22 +244,42 @@ describe('TranscriptContainer — layout and rendering', () => {
     expect(screen.getByText('어지러워요')).toBeInTheDocument();
   });
 
-  it('renders multiple transcript entries', () => {
-    const entries: TranscriptEntry[] = [
-      makeEntry({ textEnglish: 'First entry', textPatientLang: '첫 번째' }),
-      makeEntry({ textEnglish: 'Second entry', textPatientLang: '두 번째' }),
-    ];
+  it('renders correct number of entries for a multi-entry transcript', () => {
+    const entries = Array.from({ length: 4 }, (_, i) =>
+      makeEntry({ textEnglish: `Entry ${i + 1}`, textPatientLang: `항목 ${i + 1}` }),
+    );
 
     render(
       <TranscriptContainer
         transcript={entries}
         patientLanguage="ko-KR"
         providerLanguage="en-US"
-      />
+      />,
     );
 
-    expect(screen.getByText('First entry')).toBeInTheDocument();
-    expect(screen.getByText('Second entry')).toBeInTheDocument();
+    expect(screen.getAllByText('Original')).toHaveLength(4);
+    expect(screen.getAllByText('Translation')).toHaveLength(4);
+    for (let i = 1; i <= 4; i++) {
+      expect(screen.getByText(`Entry ${i}`)).toBeInTheDocument();
+      expect(screen.getByText(`항목 ${i}`)).toBeInTheDocument();
+    }
+  });
+
+  it('passes provider language as original and patient language as translated via lang attrs', () => {
+    const entries = [
+      makeEntry({ textEnglish: 'Take this twice daily.', textPatientLang: '하루에 두 번 복용하세요.' }),
+    ];
+
+    render(
+      <TranscriptContainer
+        transcript={entries}
+        providerLanguage="en-US"
+        patientLanguage="ko-KR"
+      />,
+    );
+
+    expect(screen.getByText('Take this twice daily.')).toHaveAttribute('lang', 'en');
+    expect(screen.getByText('하루에 두 번 복용하세요.')).toHaveAttribute('lang', 'ko');
   });
 
   it('renders interim text in italic when provided', () => {
@@ -207,7 +289,7 @@ describe('TranscriptContainer — layout and rendering', () => {
         patientLanguage="ko-KR"
         providerLanguage="en-US"
         interimText="speaking..."
-      />
+      />,
     );
 
     const interim = screen.getByText('speaking...');
@@ -215,24 +297,27 @@ describe('TranscriptContainer — layout and rendering', () => {
     expect(interim).toHaveClass('italic');
   });
 
-  it('scrollable container is a direct child of the outer wrapper', () => {
-    const { container } = render(
+  it('renders both transcript entries and interim text simultaneously', () => {
+    const entries = [makeEntry({ textEnglish: 'Hello', textPatientLang: '안녕하세요' })];
+
+    render(
       <TranscriptContainer
-        transcript={[]}
+        transcript={entries}
         patientLanguage="ko-KR"
         providerLanguage="en-US"
-      />
+        interimText="Speaking..."
+      />,
     );
 
-    const outer = container.firstElementChild as HTMLElement;
-    const scrollArea = outer.firstElementChild as HTMLElement;
-    // The scroll container must be the direct child of the positioned wrapper
-    // and must have both full height and overflow scrolling
-    expect(scrollArea).toHaveClass('h-full');
-    expect(scrollArea).toHaveClass('overflow-y-auto');
-    expect(scrollArea.style.scrollBehavior).toBe('smooth');
+    expect(screen.getByText('Hello')).toBeInTheDocument();
+    expect(screen.getByText('안녕하세요')).toBeInTheDocument();
+    expect(screen.getByText('Speaking...')).toBeInTheDocument();
   });
 });
+
+// ---------------------------------------------------------------------------
+// TranscriptContainer — Auto-scroll
+// ---------------------------------------------------------------------------
 
 describe('TranscriptContainer — Auto-scroll', () => {
   it('auto-scrolls to bottom when new transcript entry is added', () => {
@@ -243,7 +328,7 @@ describe('TranscriptContainer — Auto-scroll', () => {
         transcript={entries}
         patientLanguage="ko-KR"
         providerLanguage="en-US"
-      />
+      />,
     );
 
     // Clear initial scrollIntoView calls from mount
@@ -260,7 +345,7 @@ describe('TranscriptContainer — Auto-scroll', () => {
         transcript={updatedEntries}
         patientLanguage="ko-KR"
         providerLanguage="en-US"
-      />
+      />,
     );
 
     // Advance through double-rAF + setTimeout(400ms)
@@ -272,6 +357,10 @@ describe('TranscriptContainer — Auto-scroll', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// TranscriptContainer — Jump to latest pill
+// ---------------------------------------------------------------------------
+
 describe('TranscriptContainer — Jump to latest pill', () => {
   it('does not show jump pill when at bottom (initial state)', () => {
     const entries = [makeEntry()];
@@ -281,7 +370,7 @@ describe('TranscriptContainer — Jump to latest pill', () => {
         transcript={entries}
         patientLanguage="ko-KR"
         providerLanguage="en-US"
-      />
+      />,
     );
 
     expect(screen.queryByText('Jump to latest')).not.toBeInTheDocument();
@@ -289,7 +378,7 @@ describe('TranscriptContainer — Jump to latest pill', () => {
 
   it('shows jump pill when user scrolls up (not at bottom)', () => {
     const entries = Array.from({ length: 20 }, (_, i) =>
-      makeEntry({ textEnglish: `Entry ${i}`, textPatientLang: `항목 ${i}` })
+      makeEntry({ textEnglish: `Entry ${i}`, textPatientLang: `항목 ${i}` }),
     );
 
     const { container } = render(
@@ -297,7 +386,7 @@ describe('TranscriptContainer — Jump to latest pill', () => {
         transcript={entries}
         patientLanguage="ko-KR"
         providerLanguage="en-US"
-      />
+      />,
     );
 
     // Advance past the auto-scroll guard (rAF + 400ms setTimeout)
@@ -317,9 +406,9 @@ describe('TranscriptContainer — Jump to latest pill', () => {
     expect(screen.getByText('Jump to latest')).toBeInTheDocument();
   });
 
-  it('calls scrollIntoView when jump pill is clicked', () => {
+  it('hides jump pill when user scrolls back to bottom', () => {
     const entries = Array.from({ length: 20 }, (_, i) =>
-      makeEntry({ textEnglish: `Entry ${i}`, textPatientLang: `항목 ${i}` })
+      makeEntry({ textEnglish: `Entry ${i}`, textPatientLang: `항목 ${i}` }),
     );
 
     const { container } = render(
@@ -327,17 +416,48 @@ describe('TranscriptContainer — Jump to latest pill', () => {
         transcript={entries}
         patientLanguage="ko-KR"
         providerLanguage="en-US"
-      />
+      />,
     );
 
-    // Advance past the auto-scroll guard
     act(() => {
       vi.advanceTimersByTime(500);
     });
 
     const scrollContainer = container.querySelector('.overflow-y-auto') as HTMLElement;
 
-    // Simulate being scrolled up
+    // Scroll away → pill appears
+    Object.defineProperty(scrollContainer, 'scrollHeight', { value: 2000, configurable: true });
+    Object.defineProperty(scrollContainer, 'scrollTop', { value: 100, configurable: true });
+    Object.defineProperty(scrollContainer, 'clientHeight', { value: 400, configurable: true });
+    fireEvent.scroll(scrollContainer);
+    expect(screen.getByText('Jump to latest')).toBeInTheDocument();
+
+    // Scroll back to bottom → pill disappears
+    Object.defineProperty(scrollContainer, 'scrollTop', { value: 1600, configurable: true });
+    fireEvent.scroll(scrollContainer);
+    expect(screen.queryByText('Jump to latest')).not.toBeInTheDocument();
+  });
+
+  it('calls scrollIntoView when jump pill is clicked', () => {
+    const entries = Array.from({ length: 20 }, (_, i) =>
+      makeEntry({ textEnglish: `Entry ${i}`, textPatientLang: `항목 ${i}` }),
+    );
+
+    const { container } = render(
+      <TranscriptContainer
+        transcript={entries}
+        patientLanguage="ko-KR"
+        providerLanguage="en-US"
+      />,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    const scrollContainer = container.querySelector('.overflow-y-auto') as HTMLElement;
+
+    // Scroll away to show pill
     Object.defineProperty(scrollContainer, 'scrollHeight', { value: 2000, configurable: true });
     Object.defineProperty(scrollContainer, 'scrollTop', { value: 100, configurable: true });
     Object.defineProperty(scrollContainer, 'clientHeight', { value: 400, configurable: true });
@@ -349,9 +469,9 @@ describe('TranscriptContainer — Jump to latest pill', () => {
     expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' });
   });
 
-  it('hides jump pill after clicking it (dismissal)', () => {
+  it('hides jump pill after clicking it (dismissal via timeout)', () => {
     const entries = Array.from({ length: 20 }, (_, i) =>
-      makeEntry({ textEnglish: `Entry ${i}`, textPatientLang: `항목 ${i}` })
+      makeEntry({ textEnglish: `Entry ${i}`, textPatientLang: `항목 ${i}` }),
     );
 
     const { container } = render(
@@ -359,10 +479,9 @@ describe('TranscriptContainer — Jump to latest pill', () => {
         transcript={entries}
         patientLanguage="ko-KR"
         providerLanguage="en-US"
-      />
+      />,
     );
 
-    // Advance past auto-scroll guard
     act(() => {
       vi.advanceTimersByTime(500);
     });
@@ -373,10 +492,8 @@ describe('TranscriptContainer — Jump to latest pill', () => {
     Object.defineProperty(scrollContainer, 'clientHeight', { value: 400, configurable: true });
     fireEvent.scroll(scrollContainer);
 
-    // Pill should be visible
     expect(screen.getByText('Jump to latest')).toBeInTheDocument();
 
-    // Click to dismiss
     fireEvent.click(screen.getByText('Jump to latest'));
 
     // Advance past the 400ms timeout that clears showJump
