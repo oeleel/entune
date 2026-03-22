@@ -206,7 +206,8 @@ function DoctorSessionContent() {
                 <CardTitle className="text-base">Live Transcript</CardTitle>
               </CardHeader>
               <CardContent className="relative">
-                <ScrollArea ref={containerRef} className="max-h-[400px]">
+                <div ref={containerRef}>
+                <ScrollArea className="max-h-[400px]">
                   <div>
                     {realtimeTranscript.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-8 text-center">
@@ -244,6 +245,7 @@ function DoctorSessionContent() {
                     )}
                   </div>
                 </ScrollArea>
+                </div>
                 {showButton && realtimeTranscript.length > 0 && (
                   <Button
                     size="sm"

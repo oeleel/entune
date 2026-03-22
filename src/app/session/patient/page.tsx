@@ -153,7 +153,8 @@ function PatientSessionContent() {
               </p>
             </CardHeader>
             <CardContent className="relative">
-              <ScrollArea ref={containerRef} className="max-h-[500px]">
+              <div ref={containerRef}>
+              <ScrollArea className="max-h-[500px]">
                 <div>
                   {transcript.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-8 text-center">
@@ -175,6 +176,7 @@ function PatientSessionContent() {
                   )}
                 </div>
               </ScrollArea>
+              </div>
               {showButton && transcript.length > 0 && (
                 <Button
                   size="sm"

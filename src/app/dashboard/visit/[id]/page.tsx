@@ -11,8 +11,8 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -358,8 +358,8 @@ function VisitDetailContent() {
                     No transcript entries for this visit.
                   </p>
                 ) : (
-                  <ScrollArea className="max-h-[500px]">
-                    <div className="space-y-4">
+                  <ScrollArea className="h-[calc(100vh-20rem)]">
+                    <div className="space-y-4 pr-4">
                       {transcript.map((entry) => {
                         // original_text = English, translated_text = patient language
                         const patientLangLabel = LANGUAGE_LABELS[visit.language_patient] || visit.language_patient;
