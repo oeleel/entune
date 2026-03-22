@@ -6,8 +6,6 @@ import Link from 'next/link';
 import { joinSession } from '@/lib/api';
 import type { PatientUiLanguage } from '@/lib/patient-languages';
 import { useI18n } from '@/components/providers/i18n-provider';
-import { MarketingBackLink } from '@/components/marketing/marketing-back-link';
-import { MarketingInnerHeader } from '@/components/marketing/marketing-inner-header';
 import { PatientLanguageSelect } from '@/components/marketing/patient-language-select';
 
 export default function JoinPage() {
@@ -44,17 +42,32 @@ export default function JoinPage() {
   }
 
   return (
-    <main className="entune-page entune-page-enter relative flex min-h-screen flex-col items-center justify-center px-6 pb-12 pt-24">
-      <MarketingBackLink />
-      <div className="flex w-full max-w-[380px] flex-col items-center">
-        <MarketingInnerHeader />
+    <main className="entune-page relative flex min-h-screen items-center justify-center px-6">
+      {/* Gradient background */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        aria-hidden
+        style={{
+          background:
+            'linear-gradient(180deg, var(--entune-bg) 0%, hsl(0,50%,50%,0.04) 100%)',
+        }}
+      />
 
-        <div className="entune-form-box">
-          <h1 className="entune-form-title">{t('join.title')}</h1>
-          <p className="entune-form-sub">{t('join.sub')}</p>
+      <div className="relative z-10 w-full max-w-sm">
+        <div className="bg-[var(--entune-bg2)] border border-[var(--entune-border)] rounded-2xl p-8 text-center animate-[entune-fade-up_0.5s_ease_both]">
+          {/* Logo */}
+          <div
+            className="text-2xl font-light tracking-[0.12em] lowercase text-[var(--entune-text)] mb-6"
+            style={{ fontFamily: 'var(--font-entune-display), ui-serif, Georgia, serif' }}
+          >
+            entune
+          </div>
+
+          <h1 className="text-2xl font-semibold text-white mb-1">{t('join.title')}</h1>
+          <p className="text-sm text-[var(--entune-text-mid)] mb-8">{t('join.sub')}</p>
 
           <form onSubmit={handleJoin}>
-            {error && <p className="entune-error">{error}</p>}
+            {error && <p className="text-sm text-[var(--entune-red)] mb-4">{error}</p>}
 
             <input
               className="entune-code-input"
@@ -109,14 +122,14 @@ export default function JoinPage() {
               {isJoining ? t('join.joining') : t('join.join')}
             </button>
           </form>
-
-          <p className="entune-help">{t('join.help')}</p>
-
-          <p className="entune-help">
-            {t('join.providerPrompt')}{' '}
-            <Link href="/login">{t('join.signInInstead')}</Link>
-          </p>
         </div>
+
+        <p className="text-xs text-[var(--entune-text-dim)] text-center mt-6">
+          {t('join.providerPrompt')}{' '}
+          <Link href="/login" className="text-[var(--entune-teal)] hover:underline">
+            {t('join.signInInstead')}
+          </Link>
+        </p>
       </div>
     </main>
   );

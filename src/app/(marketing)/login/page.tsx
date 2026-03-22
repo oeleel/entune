@@ -1,23 +1,14 @@
 'use client';
 
 import { Suspense, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
-import { useI18n } from '@/components/providers/i18n-provider';
-import { MarketingBackLink } from '@/components/marketing/marketing-back-link';
-import { MarketingInnerHeader } from '@/components/marketing/marketing-inner-header';
 
 function LoginForm() {
-  const { t } = useI18n();
   const searchParams = useSearchParams();
-  const router = useRouter();
   const authError = searchParams.get('error') === 'auth';
-
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleGoogleSignIn = async () => {
     if (!isSupabaseConfigured()) {
@@ -47,50 +38,47 @@ function LoginForm() {
     }
   };
 
-  const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (!isSupabaseConfigured()) {
-      setError(t('login.signInUnavailable'));
-      return;
-    }
-    setIsLoading(true);
-
-    const supabase = createClient();
-
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (signInError) {
-      setError(signInError.message);
-      setIsLoading(false);
-      return;
-    }
-    router.push('/dashboard');
-  };
-
   return (
-    <main className="entune-page entune-page-enter relative flex min-h-screen flex-col items-center justify-center px-6 pb-12 pt-24">
-      <MarketingBackLink />
-      <div className="flex w-full max-w-[380px] flex-col items-center">
-        <MarketingInnerHeader />
+    <main className="entune-page relative flex min-h-screen items-center justify-center px-6">
+      {/* Gradient background */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        aria-hidden
+        style={{
+          background:
+            'linear-gradient(180deg, var(--entune-bg) 0%, hsl(174,50%,42%,0.06) 100%)',
+        }}
+      />
 
-        <div className="entune-form-box">
-          <h1 className="entune-form-title">{t('login.title')}</h1>
-          <p className="entune-form-sub">{t('login.sub')}</p>
+      <div className="relative z-10 w-full max-w-sm">
+        {/* Card */}
+        <div className="bg-[var(--entune-bg2)] border border-[var(--entune-border)] rounded-2xl p-8 text-center animate-[entune-fade-up_0.5s_ease_both]">
+          {/* Logo */}
+          <div
+            className="text-2xl font-light tracking-[0.12em] lowercase text-[var(--entune-text)] mb-6"
+            style={{ fontFamily: 'var(--font-entune-display), ui-serif, Georgia, serif' }}
+          >
+            entune
+          </div>
+
+          <h1 className="text-2xl font-semibold text-white mb-1">Sign in to Entune</h1>
+          <p className="text-sm text-[var(--entune-text-mid)] mb-8">
+            Medical interpretation, reimagined.
+          </p>
 
           {authError && (
-            <p className="entune-error">{t('login.authFailed')}</p>
+            <p className="text-sm text-[var(--entune-red)] mb-4">
+              Sign-in failed. Please try again.
+            </p>
           )}
-          {error && <p className="entune-error">{error}</p>}
+          {error && <p className="text-sm text-[var(--entune-red)] mb-4">{error}</p>}
 
           <button
             type="button"
-            className="entune-btn-oauth"
+            className="entune-btn-oauth w-full"
             onClick={handleGoogleSignIn}
           >
-            <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden>
+            <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden>
               <path
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
                 fill="#4285F4"
@@ -108,63 +96,21 @@ function LoginForm() {
                 fill="#EA4335"
               />
             </svg>
-            {t('login.google')}
+            Continue with Google
           </button>
-
-          <div className="entune-or">
-            <span>{t('login.or')}</span>
-          </div>
-
-          <form onSubmit={handleEmailAuth}>
-            <div className="entune-field">
-              <label htmlFor="email">{t('login.email')}</label>
-              <input
-                id="email"
-                className="entune-input"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t('login.emailPlaceholder')}
-                required
-                autoComplete="email"
-              />
-            </div>
-            <div className="entune-field">
-              <label htmlFor="password">{t('login.password')}</label>
-              <input
-                id="password"
-                className="entune-input"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
-                autoComplete="current-password"
-              />
-            </div>
-            <button
-              type="submit"
-              className="entune-btn entune-btn-teal"
-              disabled={isLoading}
-            >
-              {isLoading ? t('login.signingIn') : t('login.signIn')}
-            </button>
-          </form>
-
-          <p className="entune-help">
-            <Link href="/forgot-password">{t('login.forgotPassword')}</Link>
-            <span aria-hidden className="mx-2 opacity-40">
-              ·
-            </span>
-            <Link href="/signup">{t('login.newSignup')}</Link>
-          </p>
-
-          <p className="entune-help">
-            {t('login.patientPrompt')}{' '}
-            <Link href="/join">{t('login.joinInstead')}</Link>
-          </p>
         </div>
+
+        {/* Footer text */}
+        <p className="text-xs text-[var(--entune-text-dim)] text-center mt-6 leading-relaxed">
+          By signing in, you agree to our Terms of Service and Privacy Policy.
+        </p>
+
+        <p className="text-xs text-[var(--entune-text-dim)] text-center mt-4">
+          Are you a patient?{' '}
+          <Link href="/join" className="text-[var(--entune-teal)] hover:underline">
+            Join a session instead
+          </Link>
+        </p>
       </div>
     </main>
   );
