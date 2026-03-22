@@ -9,6 +9,10 @@ import { useRealtimeTranscript } from '@/hooks/use-realtime-transcript';
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { createClient } from '@/lib/supabase/client';
 import { endSession } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import type { SupportedLanguage, CulturalFlag } from '@/lib/types';
 
 function DoctorSessionContent() {
@@ -22,8 +26,8 @@ function DoctorSessionContent() {
   const [isEnding, setIsEnding] = useState(false);
   const [joinCode, setJoinCode] = useState(joinCodeParam || '');
 
-  const { status } = useSessionStatus(visitId);
-  const { transcript } = useRealtimeTranscript(visitId);
+  const { status, error: statusError } = useSessionStatus(visitId);
+  const { transcript, error: transcriptError } = useRealtimeTranscript(visitId);
   const {
     isListening,
     transcript: spokenText,
@@ -34,7 +38,6 @@ function DoctorSessionContent() {
 
   const lastProcessedRef = useRef('');
 
-  // Fetch visit details on mount
   useEffect(() => {
     if (!visitId) return;
     const supabase = createClient();
@@ -52,14 +55,12 @@ function DoctorSessionContent() {
       });
   }, [visitId]);
 
-  // Auto-start listening when session becomes active
   useEffect(() => {
     if (status === 'active' && !isListening) {
       startListening();
     }
   }, [status, isListening, startListening]);
 
-  // Process finalized speech — translate and insert into Supabase
   useEffect(() => {
     if (!spokenText || !visitId || spokenText === lastProcessedRef.current) return;
 
@@ -68,7 +69,6 @@ function DoctorSessionContent() {
 
     lastProcessedRef.current = spokenText;
 
-    // Translate and insert
     (async () => {
       try {
         const res = await fetch('/api/translate', {
@@ -113,8 +113,14 @@ function DoctorSessionContent() {
     }
   }, [visitId, stopListening, router]);
 
+  const connectionError = statusError || transcriptError;
+
   if (!visitId) {
-    return <div style={{ padding: 40 }}>Missing visitId in URL.</div>;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Missing visitId in URL.</p>
+      </div>
+    );
   }
 
   const culturalFlags = transcript
@@ -122,76 +128,128 @@ function DoctorSessionContent() {
     .filter((f): f is CulturalFlag => f !== null);
 
   return (
-    <div style={{ padding: 20, maxWidth: 800, margin: '0 auto' }}>
-      <h1>Doctor Session</h1>
-
-      {/* Join code display — shown until patient joins */}
-      {status === 'waiting' && (
-        <div style={{ textAlign: 'center', padding: 40 }}>
-          <p>Waiting for patient to join...</p>
-          <div style={{ fontSize: 48, fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: 8, margin: '20px 0' }}>
-            {joinCode}
+    <div className="min-h-screen bg-background">
+      <header className="border-b bg-card">
+        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Entune</h1>
+            <p className="text-sm text-muted-foreground">Doctor Session</p>
           </div>
-          <p style={{ color: '#666' }}>Share this code with the patient</p>
-        </div>
-      )}
-
-      {/* Active session */}
-      {status === 'active' && (
-        <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <span>
-              {isListening ? '🎤 Listening...' : 'Mic off'}
-              {interimTranscript && (
-                <span style={{ color: '#999', marginLeft: 8 }}>{interimTranscript}</span>
-              )}
-            </span>
-            <button
+          {status === 'active' && (
+            <Button
+              variant="destructive"
               onClick={handleEndSession}
               disabled={isEnding}
-              style={{ background: '#ef4444', color: 'white', padding: '8px 16px', border: 'none', borderRadius: 6, cursor: 'pointer' }}
             >
               {isEnding ? 'Ending...' : 'End Session'}
-            </button>
-          </div>
+            </Button>
+          )}
+          {status === 'ended' && (
+            <Button variant="outline" onClick={() => router.push('/dashboard')}>
+              Back to Dashboard
+            </Button>
+          )}
+        </div>
+      </header>
 
-          {/* Transcript */}
-          <div style={{ border: '1px solid #ddd', borderRadius: 8, padding: 16, maxHeight: 400, overflowY: 'auto' }}>
-            <h3>Transcript</h3>
-            {transcript.length === 0 && (
-              <p style={{ color: '#999' }}>Start speaking to see the transcript...</p>
-            )}
-            {transcript.map((entry, i) => (
-              <div key={i} style={{ marginBottom: 12, padding: 8, background: entry.speaker === 'provider' ? '#f0f9ff' : '#fef3c7', borderRadius: 6 }}>
-                <strong>{entry.speaker === 'provider' ? 'Doctor' : 'Patient'}:</strong>{' '}
-                {entry.originalText}
-                <br />
-                <span style={{ color: '#666' }}>→ {entry.translatedText}</span>
-              </div>
-            ))}
+      <main className="max-w-4xl mx-auto px-6 py-8">
+        {connectionError && (
+          <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-6 text-destructive text-sm">
+            {connectionError}
           </div>
+        )}
 
-          {/* Cultural flags */}
-          {culturalFlags.length > 0 && (
-            <div style={{ marginTop: 16 }}>
-              <h3>Cultural Flags</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {/* Waiting for patient */}
+        {status === 'waiting' && (
+          <Card>
+            <CardContent className="py-16 text-center space-y-4">
+              <p className="text-muted-foreground">Waiting for patient to join...</p>
+              <p className="text-5xl font-mono font-bold tracking-[0.3em] text-primary">
+                {joinCode}
+              </p>
+              <p className="text-sm text-muted-foreground">Share this code with the patient</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Active session */}
+        {status === 'active' && (
+          <div className="space-y-6">
+            {/* Mic status */}
+            <div className="flex items-center gap-3">
+              <Badge variant={isListening ? 'default' : 'secondary'}>
+                {isListening ? 'Listening' : 'Mic Off'}
+              </Badge>
+              {interimTranscript && (
+                <span className="text-sm text-muted-foreground italic truncate">
+                  {interimTranscript}
+                </span>
+              )}
+            </div>
+
+            {/* Transcript */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Transcript</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="max-h-[400px]">
+                  {transcript.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-8 text-center">
+                      Start speaking to see the transcript...
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {transcript.map((entry, i) => (
+                        <div
+                          key={i}
+                          className={`rounded-lg p-3 ${
+                            entry.speaker === 'provider'
+                              ? 'bg-blue-50 dark:bg-blue-950/30'
+                              : 'bg-amber-50 dark:bg-amber-950/30'
+                          }`}
+                        >
+                          <p className="text-sm">
+                            <span className="font-medium">
+                              {entry.speaker === 'provider' ? 'Doctor' : 'Patient'}:
+                            </span>{' '}
+                            {entry.originalText}
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            → {entry.translatedText}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </CardContent>
+            </Card>
+
+            {/* Cultural flags */}
+            {culturalFlags.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold">Cultural Flags</h3>
                 {culturalFlags.map((flag, i) => (
                   <CulturalFlagCard key={i} flag={flag} />
                 ))}
               </div>
-            </div>
-          )}
-        </>
-      )}
+            )}
+          </div>
+        )}
 
-      {/* Session ended */}
-      {status === 'ended' && (
-        <div style={{ textAlign: 'center', padding: 40 }}>
-          <p>Session has ended.</p>
-          <button onClick={() => router.push('/dashboard')}>Back to Dashboard</button>
-        </div>
-      )}
+        {/* Session ended */}
+        {status === 'ended' && (
+          <Card>
+            <CardContent className="py-16 text-center space-y-4">
+              <p className="text-muted-foreground">Session has ended.</p>
+              <Button onClick={() => router.push('/dashboard')}>
+                Back to Dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </main>
     </div>
   );
 }
@@ -199,7 +257,7 @@ function DoctorSessionContent() {
 export default function DoctorSessionPage() {
   return (
     <AuthGuard>
-      <Suspense fallback={<p>Loading...</p>}>
+      <Suspense fallback={<p className="p-8 text-muted-foreground">Loading...</p>}>
         <DoctorSessionContent />
       </Suspense>
     </AuthGuard>
