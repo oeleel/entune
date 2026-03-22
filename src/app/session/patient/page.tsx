@@ -1,15 +1,19 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRealtimeTranscript } from '@/hooks/use-realtime-transcript';
 import { useSessionStatus } from '@/hooks/use-session-status';
 import { useHoldToSpeak } from '@/hooks/use-hold-to-speak';
-import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { updatePatientSessionLanguage } from '@/lib/api';
 import { PatientLanguageSelect } from '@/components/marketing/patient-language-select';
 import { toPatientUiLanguage, type PatientUiLanguage } from '@/lib/patient-languages';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import type { SupportedLanguage, PatientReport } from '@/lib/types';
 
 function PatientSessionContent() {
@@ -21,15 +25,14 @@ function PatientSessionContent() {
   const [patientReport, setPatientReport] = useState<PatientReport | null>(null);
   const [languageError, setLanguageError] = useState<string | null>(null);
 
-  const { status } = useSessionStatus(visitId);
-  const { transcript } = useRealtimeTranscript(visitId);
+  const { status, error: statusError } = useSessionStatus(visitId);
+  const { transcript, error: transcriptError } = useRealtimeTranscript(visitId);
   const { isHolding, isTranslating, startHolding, stopHolding } = useHoldToSpeak(
     visitId,
     patientLang,
     providerLang
   );
 
-  // Fetch visit details for language pair
   useEffect(() => {
     if (!visitId) return;
     const supabase = createClient();
@@ -47,7 +50,6 @@ function PatientSessionContent() {
       });
   }, [visitId]);
 
-  // When session ends, fetch patient report
   useEffect(() => {
     if (status !== 'ended' || !visitId) return;
     const supabase = createClient();
@@ -74,147 +76,199 @@ function PatientSessionContent() {
     }
   }
 
-  // Filter to show only provider messages as subtitles
   const providerMessages = transcript.filter((t) => t.speaker === 'provider');
+  const connectionError = statusError || transcriptError;
+  const languageLocked = status === 'ended';
 
   if (!visitId) {
     return (
-      <p className="entune-marketing min-h-screen p-6 text-[var(--entune-text)]">
-        No visit ID provided.
-      </p>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">No visit ID provided.</p>
+      </div>
     );
   }
 
-  const languageLocked = status === 'ended';
-
   return (
-    <div className="entune-marketing min-h-screen px-4 py-6 text-[var(--entune-text)]">
-      <div className="mx-auto max-w-2xl">
-        <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div className="min-h-screen bg-background">
+      <header className="border-b bg-card">
+        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <div>
-            <h1 className="entune-form-title m-0 text-left">Patient session</h1>
-            <p className="m-0 mt-1 text-left text-sm text-[var(--entune-text-mid)]">
-              Translation follows the language you choose below.
-            </p>
+            <h1 className="text-2xl font-bold tracking-tight">Entune</h1>
+            <p className="text-sm text-muted-foreground">Patient Session</p>
           </div>
-          <div className="w-full sm:w-64 sm:shrink-0">
-            <PatientLanguageSelect
-              id="sessionPatientLanguage"
-              label="Your language"
-              value={toPatientUiLanguage(patientLang)}
-              onChange={handlePatientLanguageChange}
-              disabled={languageLocked}
-            />
-            {languageError && (
-              <p className="mt-2 text-sm text-[#f0a8a8]">{languageError}</p>
-            )}
-            {languageLocked && (
-              <p className="mt-2 text-xs text-[var(--entune-text-dim)]">
-                Language is fixed after the session ends.
-              </p>
-            )}
-          </div>
-        </header>
-
-      {status === 'waiting' && (
-        <p>Connecting to doctor...</p>
-      )}
-
-      {status === 'active' && (
-        <div>
-          <h2>Doctor is speaking:</h2>
-          <div>
-            {providerMessages.map((entry, i) => (
-              <div key={i} style={{ marginBottom: 8 }}>
-                <p>{entry.translatedText}</p>
-              </div>
-            ))}
-            {providerMessages.length === 0 && <p>Waiting for doctor to speak...</p>}
-          </div>
-
-          <hr />
-
-          <div>
-            <button
-              onMouseDown={startHolding}
-              onMouseUp={stopHolding}
-              onTouchStart={startHolding}
-              onTouchEnd={stopHolding}
-              disabled={isTranslating}
-              style={{
-                padding: '24px 48px',
-                fontSize: '1.2em',
-                cursor: isTranslating ? 'wait' : 'pointer',
-              }}
-            >
-              {isTranslating
-                ? 'Translating...'
-                : isHolding
-                  ? 'Listening... (release to send)'
-                  : 'Hold to Speak'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {status === 'ended' && (
-        <div>
-          <h2>Session Ended</h2>
-          {patientReport ? (
-            <div>
-              <h3>Your Visit Summary</h3>
-              <p>{patientReport.summary}</p>
-
-              {patientReport.medications.length > 0 && (
-                <>
-                  <h4>Medications</h4>
-                  <ul>
-                    {patientReport.medications.map((med, i) => (
-                      <li key={i}>
-                        <strong>{med.name}</strong>: {med.instructions}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-
-              {patientReport.followUps.length > 0 && (
-                <>
-                  <h4>Follow-ups</h4>
-                  <ul>
-                    {patientReport.followUps.map((fu, i) => (
-                      <li key={i}>
-                        {fu.item}{fu.date ? ` — ${fu.date}` : ''}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-
-              {patientReport.warningSignsToWatchFor.length > 0 && (
-                <>
-                  <h4>Warning Signs to Watch For</h4>
-                  <ul>
-                    {patientReport.warningSignsToWatchFor.map((sign, i) => (
-                      <li key={i}>{sign}</li>
-                    ))}
-                  </ul>
-                </>
+          <div className="flex items-center gap-4">
+            <div className="w-48">
+              <PatientLanguageSelect
+                id="sessionPatientLanguage"
+                label="Your language"
+                value={toPatientUiLanguage(patientLang)}
+                onChange={handlePatientLanguageChange}
+                disabled={languageLocked}
+              />
+              {languageError && (
+                <p className="mt-1 text-xs text-destructive">{languageError}</p>
               )}
             </div>
-          ) : (
-            <p>Loading your report...</p>
-          )}
+            <Badge variant={status === 'active' ? 'default' : 'secondary'}>
+              {status === 'waiting' ? 'Connecting...' : status === 'active' ? 'In Session' : 'Ended'}
+            </Badge>
+          </div>
         </div>
-      )}
-      </div>
+      </header>
+
+      <main className="max-w-4xl mx-auto px-6 py-8">
+        {connectionError && (
+          <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-6 text-destructive text-sm">
+            {connectionError}
+          </div>
+        )}
+
+        {/* Waiting */}
+        {status === 'waiting' && (
+          <Card>
+            <CardContent className="py-16 text-center">
+              <p className="text-muted-foreground">Connecting to doctor...</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Active session */}
+        {status === 'active' && (
+          <div className="space-y-6">
+            {/* Doctor subtitles */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Doctor is speaking</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="max-h-[300px]">
+                  {providerMessages.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-8 text-center">
+                      Waiting for doctor to speak...
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {providerMessages.map((entry, i) => (
+                        <div key={i} className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3">
+                          <p className="text-sm">{entry.translatedText}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </CardContent>
+            </Card>
+
+            <Separator />
+
+            {/* Hold-to-speak button */}
+            <div className="flex justify-center">
+              <Button
+                size="lg"
+                variant={isHolding ? 'default' : 'outline'}
+                className="h-20 w-64 text-lg"
+                onMouseDown={startHolding}
+                onMouseUp={stopHolding}
+                onTouchStart={startHolding}
+                onTouchEnd={stopHolding}
+                disabled={isTranslating}
+              >
+                {isTranslating
+                  ? 'Translating...'
+                  : isHolding
+                    ? 'Listening... (release to send)'
+                    : 'Hold to Speak'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Session ended */}
+        {status === 'ended' && (
+          <div className="space-y-6">
+            {patientReport ? (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Your Visit Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm">{patientReport.summary}</p>
+                  </CardContent>
+                </Card>
+
+                {patientReport.medications.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Medications</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-3">
+                        {patientReport.medications.map((med, i) => (
+                          <li key={i} className="border-l-2 border-primary pl-3">
+                            <p className="font-medium text-sm">{med.name}</p>
+                            <p className="text-sm text-muted-foreground">{med.instructions}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {patientReport.followUps.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Follow-Ups</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {patientReport.followUps.map((fu, i) => (
+                          <li key={i} className="flex justify-between items-start text-sm">
+                            <span>{fu.item}</span>
+                            {fu.date && (
+                              <span className="text-muted-foreground ml-4 whitespace-nowrap">
+                                {fu.date}
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {patientReport.warningSignsToWatchFor.length > 0 && (
+                  <Card className="border-red-200">
+                    <CardHeader>
+                      <CardTitle className="text-base text-red-700">Warning Signs</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-1 list-disc list-inside text-sm">
+                        {patientReport.warningSignsToWatchFor.map((sign, i) => (
+                          <li key={i}>{sign}</li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            ) : (
+              <Card>
+                <CardContent className="py-16 text-center">
+                  <p className="text-muted-foreground">Loading your report...</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+      </main>
     </div>
   );
 }
 
 export default function PatientSessionPage() {
   return (
-    <Suspense fallback={<p>Loading...</p>}>
+    <Suspense fallback={<p className="p-8 text-muted-foreground">Loading...</p>}>
       <PatientSessionContent />
     </Suspense>
   );

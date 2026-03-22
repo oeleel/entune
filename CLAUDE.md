@@ -43,14 +43,19 @@ Entune — Real-time, medically-aware, bilingual translation for healthcare visi
 HooHacks 2026 hackathon project. Track: Health & Wellness.
 
 ## What It Does
-Patient and provider speak naturally in their own language during a medical visit. The app:
-1. Provides live translated subtitles on screen in both languages
-2. Speaks the translation aloud in a natural human voice via ElevenLabs streaming TTS
-3. Detects culturally specific health concepts and flags them with clinical context for the provider
-4. Simplifies medical jargon in the patient-facing direction
-5. Generates a bilingual visit summary (PDF) at the end with medications, follow-ups, and instructions
-6. **Memory layer:** Users sign in with Google, and all visits are saved to their account. A personal health dashboard shows visit history, and an AI chat lets patients ask questions about their past visits in their preferred language (e.g., "What medication did the doctor prescribe last week?" or "What were the warning signs I was told to watch for?")
-7. **Stretch goal:** Monitors patient emotional state via camera (Presage API) and alerts provider to elevated stress
+A two-device system where doctor and patient each use their own screen during a medical visit. The app:
+1. **Session model:** Doctor creates a session (picks languages) → gets a 6-digit join code → patient enters code on their device to join
+2. **Live translated subtitles:** Both sides see a real-time bilingual transcript powered by Claude API — each person speaks in their language and reads the translation on screen
+3. **Cultural bridging:** Detects culturally specific health concepts (화병, nervios, etc.) and flags them with clinical context for the provider
+4. **Jargon simplification:** Patient-facing translations simplify medical jargon; provider-facing translations preserve clinical precision
+5. **Dual reports on session end:** Doctor gets a SOAP note; patient gets a simplified summary with medications, follow-ups, and warning signs — each in their own language
+6. **Memory layer:** Doctors sign in with Google OAuth. All visits are saved to their account. A dashboard shows visit history, and an AI chat lets users ask questions about past visits in their preferred language
+7. **Hold-to-speak:** Push-to-talk interaction model for clear turn-taking
+
+### Deferred / Future
+- **Voice output (ElevenLabs TTS):** Code exists in `src/lib/elevenlabs.ts` but is disabled. The `/api/translate` route returns `audioUrl: null`. Will re-enable when we integrate streaming TTS
+- **Presage emotional sensing:** Stretch goal — camera-based patient stress detection via Presage API
+- **Audio player component:** `src/components/visit/audio-player.tsx` exists but is not active without TTS
 
 ## Supported Languages (MVP)
 - English (en-US)
@@ -60,26 +65,35 @@ Patient and provider speak naturally in their own language during a medical visi
 ## Tech Stack
 - **Framework:** Next.js 15 (App Router, TypeScript)
 - **UI:** Tailwind CSS + shadcn/ui
-- **Backend/DB:** Supabase (Postgres, real-time)
-- **Auth:** Supabase Auth (Google OAuth sign-in)
-- **AI Translation:** Claude API (medical-context translation, cultural bridging, jargon simplification, summary generation, visit history chat)
-- **Voice Output:** ElevenLabs Streaming TTS API (natural-sounding multilingual voice synthesis)
+- **Backend/DB:** Supabase (Postgres, real-time subscriptions for live transcript sync)
+- **Auth:** Supabase Auth (Google OAuth + email/password sign-in)
+- **AI Translation:** Claude API (medical-context translation, cultural bridging, jargon simplification, dual report generation, visit history chat)
 - **Speech Recognition:** Web Speech API (browser-native, no external STT service)
-- **Stretch Goal — Emotional Sensing:** Presage API (camera-based patient stress/emotional state detection)
 - **Deploy:** Vercel
 - **Package Manager:** npm
+
+**Deferred:**
+- **Voice Output:** ElevenLabs Streaming TTS API (code in `src/lib/elevenlabs.ts`, disabled)
+- **Emotional Sensing:** Presage API (stretch goal)
 
 ## Prize Tracks We're Submitting To
 1. **Health & Wellness** (primary track)
 2. **Accessibility & Empowerment** (secondary track)
-3. **Best Use of ElevenLabs** (sponsor prize — Beats Solo Earbuds)
-4. **Best Use of Presage** (sponsor prize — if we integrate it)
+3. **Best Use of Presage** (sponsor prize — if we integrate it)
 
 ## Team & File Ownership
 - **Leo:** Backend, infra, API routes, Supabase, Claude API integration, Auth setup, `src/app/api/`, `src/lib/`, `CLAUDE.md`
 - **Daniel:** Integration, API client wiring, hooks, state management, `src/lib/api.ts`, `src/hooks/`, `src/components/shared/`
 - **Hailey:** Frontend UI, `src/components/visit/`, `src/app/page.tsx` (landing), `src/app/login/` (login page)
-- **Elliot:** Frontend UI, `src/components/summary/`, `src/components/dashboard/`, `src/app/visit/`, `src/app/dashboard/`, `src/app/summary/`
+- **Elliot:** Frontend UI, `src/components/summary/`, `src/components/dashboard/`, `src/app/visit/`, `src/app/dashboard/`, `src/app/summary/`, `src/app/session/`
+
+## Session Flow
+1. Doctor signs in → dashboard → creates session (picks patient + provider languages) → gets 6-digit join code
+2. Patient navigates to `/join` → enters join code (+ optional name/email) → joins session
+3. Session status transitions: `waiting` → `active` (patient joins) → `ended` (doctor ends)
+4. Both sides see live translated transcript via Supabase real-time subscriptions on `transcript_entries`
+5. Hold-to-speak: user holds button → Web Speech API captures speech → sent to `/api/translate` → result inserted into `transcript_entries` → both devices update in real-time
+6. Doctor ends session → `/api/session/end` generates both reports in parallel (SOAP for doctor, simplified for patient) → saved to `visit_summaries`
 
 ## Directory Structure
 ```
@@ -88,19 +102,33 @@ src/
     layout.tsx                      # Root layout with auth session provider
     page.tsx                        # Landing page (Hailey)
     login/
-      page.tsx                      # Login page with Google sign-in (Hailey)
+      page.tsx                      # Login page — email/password + Google OAuth (Hailey)
+    join/
+      page.tsx                      # Patient join page — enter 6-digit code (Hailey)
     dashboard/
-      page.tsx                      # Visit history + AI chat (Elliot)
+      page.tsx                      # Doctor dashboard — visit history + AI chat (Elliot)
+    session/
+      doctor/
+        page.tsx                    # Doctor session view — transcript + controls (Elliot)
+      patient/
+        page.tsx                    # Patient session view — transcript + hold-to-speak (Elliot)
     visit/
-      page.tsx                      # Main visit/translation page (Elliot)
+      page.tsx                      # Legacy visit page (may redirect to session flow)
     summary/
       [id]/
         page.tsx                    # Post-visit bilingual summary (Elliot)
     api/
+      session/
+        create/
+          route.ts                  # POST: doctor creates session, returns joinCode
+        join/
+          route.ts                  # POST: patient joins session by code
+        end/
+          route.ts                  # POST: doctor ends session, generates dual reports
       translate/
-        route.ts                    # POST: sends speech text to Claude for translation + cultural flag detection
+        route.ts                    # POST: Claude translation + cultural flag (TTS disabled)
       tts/
-        route.ts                    # POST: sends translated text to ElevenLabs, returns streaming audio
+        route.ts                    # POST: stub — returns { audioUrl: null } (deferred)
       summary/
         route.ts                    # POST: generates bilingual visit summary from transcript
       chat/
@@ -117,7 +145,7 @@ src/
       cultural-flag-card.tsx        # Cultural context popup card (Hailey)
       language-selector.tsx         # Language pair picker (Hailey)
       recording-controls.tsx        # Start/stop visit controls (Hailey)
-      audio-player.tsx              # Plays ElevenLabs TTS audio for each translation (Hailey)
+      audio-player.tsx              # Deferred: TTS audio playback (Hailey)
       stress-indicator.tsx          # Stretch: Presage stress level display (Hailey)
     summary/
       summary-view.tsx              # Bilingual PDF-ready summary (Elliot)
@@ -138,8 +166,8 @@ src/
       client.ts                     # Browser Supabase client
       server.ts                     # Server Supabase client
       middleware.ts                 # Supabase auth middleware helper
-    claude.ts                       # Claude API helper (translation, chat, summary generation)
-    elevenlabs.ts                   # ElevenLabs TTS helper (streaming audio generation)
+    claude.ts                       # Claude API helper (translation, chat, dual report generation)
+    elevenlabs.ts                   # Deferred: ElevenLabs TTS helper (kept for future use)
     presage.ts                      # Stretch: Presage API helper (stress/emotion detection)
     cultural-glossary.ts            # Cultural health concepts data by language
     speech.ts                       # Web Speech API wrapper (recognition setup per language)
@@ -153,6 +181,9 @@ src/
     use-visit-session.ts            # Hook managing visit state and transcript (Daniel)
     use-chat.ts                     # Hook managing chat state and /api/chat calls (Daniel)
     use-user.ts                     # Hook to get current authenticated user (Daniel)
+    use-hold-to-speak.ts            # Hook for push-to-talk interaction (Daniel)
+    use-realtime-transcript.ts      # Hook for Supabase real-time transcript subscription (Daniel)
+    use-session-status.ts           # Hook for tracking session status changes (Daniel)
 ```
 
 ## Core Data Types (types.ts)
@@ -186,7 +217,7 @@ export type TranslationResponse = {
   translatedText: string;
   speaker: 'patient' | 'provider';
   culturalFlag: CulturalFlag | null;
-  audioUrl: string | null; // ElevenLabs TTS audio URL for the translated text
+  audioUrl: string | null; // Always null — TTS deferred
   timestamp: string;
 };
 
@@ -217,7 +248,7 @@ export type VisitSummary = {
 
 // Auth
 export type UserProfile = {
-  id: string; // Supabase auth user ID
+  id: string;
   email: string;
   name: string;
   avatarUrl: string | null;
@@ -230,18 +261,57 @@ export type ChatMessage = {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
-  referencedVisitIds?: string[]; // which visits the AI cited in its response
+  referencedVisitIds?: string[];
 };
 
 export type ChatRequest = {
   message: string;
   userId: string;
-  preferredLanguage: SupportedLanguage; // respond in this language
+  preferredLanguage: SupportedLanguage;
+  visitId?: string; // scope to single visit when provided
 };
 
 export type ChatResponse = {
   reply: string;
   referencedVisitIds: string[];
+};
+
+// --- Two-Device Doctor/Patient Session Model ---
+
+export type SessionStatus = 'waiting' | 'active' | 'ended';
+
+export type Session = {
+  id: string;
+  userId: string;
+  joinCode: string;
+  status: SessionStatus;
+  languagePatient: SupportedLanguage;
+  languageProvider: SupportedLanguage;
+  patientName: string | null;
+  patientEmail: string | null;
+  startedAt: string;
+  endedAt: string | null;
+};
+
+export type DoctorReport = {
+  visitId: string;
+  subjective: string;
+  objective: string;
+  assessment: string;
+  plan: string;
+  culturalConsiderations: string;
+  languagePair: LanguagePair;
+  generatedAt: string;
+};
+
+export type PatientReport = {
+  visitId: string;
+  summary: string;
+  medications: { name: string; instructions: string }[];
+  followUps: { item: string; date?: string }[];
+  warningSignsToWatchFor: string[];
+  language: SupportedLanguage;
+  generatedAt: string;
 };
 ```
 
@@ -255,18 +325,22 @@ The translation endpoint sends each utterance to Claude with a system prompt tha
 
 ## Supabase Schema
 ```sql
--- Visit sessions (linked to authenticated user)
+-- Visit sessions (linked to authenticated doctor)
 create table visits (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade,
+  join_code text,                    -- 6-digit code for patient to join
+  status text default 'waiting',     -- 'waiting' | 'active' | 'ended'
   language_patient text not null,
   language_provider text not null,
+  patient_name text,                 -- set when patient joins
+  patient_email text,                -- set when patient joins
   started_at timestamptz default now(),
   ended_at timestamptz,
   created_at timestamptz default now()
 );
 
--- Transcript entries
+-- Transcript entries (synced in real-time via Supabase subscriptions)
 create table transcript_entries (
   id uuid primary key default gen_random_uuid(),
   visit_id uuid references visits(id) on delete cascade,
@@ -277,11 +351,13 @@ create table transcript_entries (
   timestamp timestamptz default now()
 );
 
--- Generated summaries
+-- Generated reports (doctor SOAP + patient summary)
 create table visit_summaries (
   id uuid primary key default gen_random_uuid(),
   visit_id uuid references visits(id) on delete cascade,
-  summary_data jsonb not null,
+  summary_data jsonb not null,       -- legacy field (empty object for new sessions)
+  doctor_report jsonb,               -- SOAP note for provider
+  patient_report jsonb,              -- simplified summary for patient
   generated_at timestamptz default now()
 );
 
@@ -320,36 +396,49 @@ create policy "Users can insert own profile" on user_profiles for insert with ch
 
 ## Supabase Auth Setup
 - Enable Google OAuth in Supabase Dashboard → Authentication → Providers → Google
-- You need a Google Cloud OAuth client ID and secret (create at console.cloud.google.com)
+- Email/password sign-in is also enabled
 - Set the redirect URL in Google Console to: `https://<your-supabase-project>.supabase.co/auth/v1/callback`
 - In the Next.js app, the `/api/auth/callback/route.ts` handles the OAuth code exchange
 - The middleware (`src/middleware.ts`) refreshes the session on every request
-- Protected pages (dashboard, visit) should check for auth and redirect to /login if not authenticated
+- Protected pages (dashboard, session) check for auth and redirect to /login if not authenticated
 
 ## Key API Routes
 
+### POST /api/session/create
+- Auth: requires authenticated user (doctor)
+- Input: `{ patientLanguage: SupportedLanguage, providerLanguage: SupportedLanguage }`
+- Output: `{ visitId: string, joinCode: string }`
+- Creates a new visit with status `waiting` and a random 6-digit join code
+
+### POST /api/session/join
+- Auth: none (patient joins without account)
+- Input: `{ joinCode: string, patientName?: string, patientEmail?: string }`
+- Output: `{ visitId: string, patientLanguage: SupportedLanguage, providerLanguage: SupportedLanguage }`
+- Finds visit by join code, updates status to `active`, stores patient info
+
+### POST /api/session/end
+- Auth: requires authenticated user (doctor, must own the visit)
+- Input: `{ visitId: string }`
+- Output: `{ doctorReport: DoctorReport, patientReport: PatientReport }`
+- Ends the visit, fetches transcript, generates both reports in parallel via Claude, saves to `visit_summaries`
+
 ### POST /api/translate
 - Input: TranslationRequest
-- Output: TranslationResponse (including audioUrl from ElevenLabs)
+- Output: TranslationResponse (audioUrl is always null — TTS deferred)
 - Calls Claude API with medical translation system prompt
 - Returns translation + optional cultural flag
-- After getting translation, calls ElevenLabs to generate TTS audio
-- Returns audio as a base64 data URL or a temporary URL the client can play
 
 ### POST /api/tts
-- Input: { text: string, language: SupportedLanguage }
-- Output: Audio stream or base64 audio data
-- Standalone TTS endpoint using ElevenLabs streaming API
-- Used if we want to decouple TTS from translation (e.g., for replaying)
-- Voice selection: use a different ElevenLabs voice per language for natural feel
+- **Deferred** — returns `{ audioUrl: null, message: "TTS is not enabled" }`
+- Will integrate ElevenLabs streaming TTS when re-enabled
 
 ### POST /api/summary
-- Input: { visitId: string, transcript: TranscriptEntry[] }
+- Input: `{ visitId: string, transcript: TranscriptEntry[] }`
 - Output: VisitSummary
 - Calls Claude API to generate structured bilingual summary from full transcript
 
 ### POST /api/chat
-- Input: ChatRequest (message, userId, preferredLanguage)
+- Input: ChatRequest (message, userId, preferredLanguage, optional visitId)
 - Auth: requires authenticated user (verify via Supabase session)
 - Process:
   1. Fetch the user's past visit summaries and recent transcript entries from Supabase
@@ -380,19 +469,7 @@ create policy "Users can insert own profile" on user_profiles for insert with ch
 ### GET /api/health
 - Output: { status: "ok", timestamp: number }
 
-## ElevenLabs Integration
-- API Docs: https://elevenlabs.io/docs/api-reference
-- Use the streaming TTS endpoint for lowest latency
-- Select appropriate voices per language:
-  - English: use a clear, professional American English voice
-  - Korean: use a Korean voice (ElevenLabs supports Korean)
-  - Spanish: use a Latin American Spanish voice
-- The /api/translate route should call ElevenLabs AFTER getting the Claude translation, then return both the text and audio together
-- On the frontend, the audio-player component auto-plays the audio when a new translation arrives
-- IMPORTANT: Set `ELEVENLABS_API_KEY` in `.env.local`
-- Use the `eleven_turbo_v2_5` or latest multilingual model for best quality + speed
-
-## Presage Integration (STRETCH GOAL — Only if ahead of schedule by midnight)
+## Presage Integration (STRETCH GOAL)
 - API Docs: https://mlh.link/presage
 - Presage uses the user's webcam to detect vital signs and emotional state
 - Integration plan:
@@ -416,30 +493,35 @@ These serve as a trigger list for the demo. The LLM will also catch unlisted cul
 
 ## Demo Plan
 Screen Studio recording (~2.5–3 min):
-1. **Sign in** with Google (quick, shows auth is real)
-2. **Korean-English visit**: Patient says "화병인 것 같아요" → cultural flag pops up → translation is SPOKEN aloud in natural English via ElevenLabs
-3. **End visit** → bilingual summary generates
-4. **Spanish-English visit** (shorter): Patient mentions "nervios" → cultural flag pops up → translation spoken
-5. **Dashboard**: Show visit history with both visits listed as cards
-6. **AI Chat**: Ask "What did the doctor say about my medication?" in Korean → get a personalized answer pulled from visit history, responded to in Korean
-7. If Presage is integrated: show stress indicator rising during a visit
+1. **Sign in** with Google or email/password (quick, shows auth is real)
+2. **Create session** as doctor — pick Korean-English — show the 6-digit code
+3. **Patient joins** on second device — enters code → both see the session go active
+4. **Korean-English visit**: Patient says "화병인 것 같아요" → cultural flag pops up → translated text appears on both screens in real time
+5. **End visit** → dual reports generate (SOAP for doctor, simplified for patient)
+6. **Spanish-English visit** (shorter): Patient mentions "nervios" → cultural flag pops up → translation displayed
+7. **Dashboard**: Show visit history with both visits listed as cards
+8. **AI Chat**: Ask "What did the doctor say about my medication?" in Korean → get a personalized answer pulled from visit history, responded to in Korean
+9. If Presage is integrated: show stress indicator rising during a visit
 
 The memory/chat feature is the closing "wow" — judges realize this isn't just a translator, it's a persistent health companion that remembers every visit and speaks your language.
 
 ## Important Notes
 - Web Speech API only works in Chrome (demo in Chrome)
 - Web Speech API requires HTTPS in production (Vercel handles this)
-- Keep Claude API calls as fast as possible — use claude-sonnet-4-20250514 for translation, same for summary generation
-- ElevenLabs streaming TTS should start playing audio before the full response is received — use their streaming endpoint
+- Keep Claude API calls as fast as possible — use claude-sonnet-4-20250514 for translation, same for report generation
 - The cultural glossary is included in the system prompt so Claude knows to watch for these terms specifically
 - All translations should feel natural, not robotic — this is a medical conversation, not a phrasebook
-- ElevenLabs API key goes in `.env.local` as `ELEVENLABS_API_KEY`
 - Presage integration is a STRETCH GOAL — do not start it until core features are polished
+- TTS (ElevenLabs) is deferred — code exists in `src/lib/elevenlabs.ts` but is not called
 
 ## Environment Variables
 ```
 NEXT_PUBLIC_SUPABASE_URL=your-project-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ANTHROPIC_API_KEY=your-claude-api-key
-ELEVENLABS_API_KEY=your-elevenlabs-api-key
+```
+
+### Optional / Deferred
+```
+ELEVENLABS_API_KEY=your-elevenlabs-api-key   # Not needed until TTS is re-enabled
 ```

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { translateWithContext } from '@/lib/claude';
-import { textToSpeech, audioToBase64DataUrl } from '@/lib/elevenlabs';
 import type { TranslationRequest, TranslationResponse } from '@/lib/types';
 
 export async function POST(request: Request) {
@@ -31,23 +30,12 @@ export async function POST(request: Request) {
       visitContext
     );
 
-    // Call ElevenLabs TTS for the translated text
-    let audioUrl: string | null = null;
-    try {
-      const audioBuffer = await textToSpeech(translatedText, targetLanguage);
-      if (audioBuffer) {
-        audioUrl = audioToBase64DataUrl(audioBuffer);
-      }
-    } catch (ttsError) {
-      console.error('TTS failed, returning text-only response:', ttsError);
-    }
-
     const response: TranslationResponse = {
       originalText: text,
       translatedText,
       speaker,
       culturalFlag,
-      audioUrl,
+      audioUrl: null, // TTS deferred
       timestamp: new Date().toISOString(),
     };
 

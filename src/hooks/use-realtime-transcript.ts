@@ -6,6 +6,7 @@ import type { TranscriptEntry, CulturalFlag } from '@/lib/types';
 
 export function useRealtimeTranscript(visitId: string | null) {
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visitId) return;
@@ -18,7 +19,11 @@ export function useRealtimeTranscript(visitId: string | null) {
       .select('*')
       .eq('visit_id', visitId)
       .order('timestamp', { ascending: true })
-      .then(({ data }) => {
+      .then(({ data, error: fetchError }) => {
+        if (fetchError) {
+          setError(`Failed to load transcript: ${fetchError.message}`);
+          return;
+        }
         if (data) {
           setTranscript(
             data.map((e) => ({
@@ -57,12 +62,16 @@ export function useRealtimeTranscript(visitId: string | null) {
           setTranscript((prev) => [...prev, entry]);
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR') {
+          setError(`Realtime connection error: ${err?.message || 'unknown'}`);
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, [visitId]);
 
-  return { transcript };
+  return { transcript, error };
 }

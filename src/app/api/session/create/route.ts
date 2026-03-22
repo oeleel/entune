@@ -6,6 +6,8 @@ function generateJoinCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+const MAX_JOIN_CODE_RETRIES = 5;
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
@@ -28,26 +30,41 @@ export async function POST(request: Request) {
       );
     }
 
-    const joinCode = generateJoinCode();
+    // Retry loop for join code uniqueness collisions
+    for (let attempt = 0; attempt < MAX_JOIN_CODE_RETRIES; attempt++) {
+      const joinCode = generateJoinCode();
 
-    const { data, error } = await supabase
-      .from('visits')
-      .insert({
-        user_id: user.id,
-        join_code: joinCode,
-        status: 'waiting',
-        language_patient: patientLanguage,
-        language_provider: providerLanguage,
-      })
-      .select('id, join_code')
-      .single();
+      const { data, error } = await supabase
+        .from('visits')
+        .insert({
+          user_id: user.id,
+          join_code: joinCode,
+          status: 'waiting',
+          language_patient: patientLanguage,
+          language_provider: providerLanguage,
+        })
+        .select('id, join_code')
+        .single();
 
-    if (error) {
+      if (!error && data) {
+        return NextResponse.json({ visitId: data.id, joinCode: data.join_code });
+      }
+
+      // Postgres unique violation = code 23505
+      if (error.code === '23505') {
+        continue;
+      }
+
+      // Non-collision error — fail immediately
       console.error('Failed to create session:', error);
       return NextResponse.json({ error: 'Failed to create session' }, { status: 500 });
     }
 
-    return NextResponse.json({ visitId: data.id, joinCode: data.join_code });
+    // Exhausted retries
+    return NextResponse.json(
+      { error: 'Failed to generate unique join code. Please try again.' },
+      { status: 500 }
+    );
   } catch (error) {
     console.error('Session create error:', error);
     return NextResponse.json(
