@@ -607,6 +607,54 @@
   color: var(--entune-text);
 }
 
+/* Site language (EN / 한 / ES) */
+.entune-lang-switch {
+  position: fixed;
+  top: 1.25rem;
+  right: 1rem;
+  z-index: 20;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: min(100vw - 2rem, 280px);
+}
+
+.entune-lang-btn {
+  min-width: 2.5rem;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--entune-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--entune-text-mid);
+  font-family: var(--font-entune-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.entune-marketing .entune-lang-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--entune-text);
+}
+
+.entune-marketing .entune-lang-btn-active {
+  background: rgba(135, 211, 218, 0.15);
+  border-color: rgba(135, 211, 218, 0.35);
+  color: var(--entune-teal);
+}
+
+.entune-lang-switch-doctor {
+  position: static;
+  max-width: none;
+  flex-shrink: 0;
+}
+
 .entune-marketing .entune-error {
   font-size: 13px;
   color: #f0a8a8;
@@ -700,6 +748,31 @@
   gap: 16px;
   padding: 18px 24px;
   border-bottom: 1px solid var(--entune-border);
+}
+
+.entune-doctor-desktop .entune-dd-header-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px 16px;
+  margin-left: auto;
+}
+
+.entune-doctor-desktop .entune-lang-switch-doctor .entune-lang-btn {
+  border-color: var(--entune-border);
+  color: var(--entune-text-mid);
+}
+
+.entune-doctor-desktop .entune-lang-switch-doctor .entune-lang-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--entune-text);
+}
+
+.entune-doctor-desktop .entune-lang-switch-doctor .entune-lang-btn-active {
+  background: rgba(135, 211, 218, 0.12);
+  border-color: rgba(135, 211, 218, 0.35);
+  color: var(--entune-teal);
 }
 
 .entune-doctor-desktop .entune-dd-wordmark {

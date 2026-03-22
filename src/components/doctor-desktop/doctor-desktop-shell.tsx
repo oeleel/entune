@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 
+import { SiteLanguageSwitcher } from '@/components/marketing/site-language-switcher';
+import { useI18n } from '@/components/providers/i18n-provider';
 import { useUser } from '@/hooks/use-user';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +17,7 @@ type DoctorDesktopShellProps = {
 };
 
 export function DoctorDesktopShell({ children, className }: DoctorDesktopShellProps) {
+  const { t } = useI18n();
   const pathname = usePathname();
   const { user, isLoading } = useUser();
 
@@ -31,15 +34,18 @@ export function DoctorDesktopShell({ children, className }: DoctorDesktopShellPr
         <Link href={wordmarkHref} className="entune-dd-wordmark">
           entune
         </Link>
-        {!hideFullNav ? (
-          <nav className="entune-dd-nav" aria-label="Doctor">
-            <Link href="/appointments">Appointments</Link>
-            <Link href="/visits">Visits</Link>
-            <Link href="/start-session">Start session</Link>
-            <Link href="/live-translation">Live</Link>
-            <Link href="/settings">Settings</Link>
-          </nav>
-        ) : null}
+        <div className="entune-dd-header-tools">
+          {!hideFullNav ? (
+            <nav className="entune-dd-nav" aria-label={t('doctor.navAria')}>
+              <Link href="/appointments">{t('doctor.appointments')}</Link>
+              <Link href="/visits">{t('doctor.visits')}</Link>
+              <Link href="/start-session">{t('doctor.startSession')}</Link>
+              <Link href="/live-translation">{t('doctor.live')}</Link>
+              <Link href="/settings">{t('doctor.settings')}</Link>
+            </nav>
+          ) : null}
+          <SiteLanguageSwitcher variant="doctor" />
+        </div>
       </header>
       <main className="entune-dd-main">{children}</main>
     </div>
