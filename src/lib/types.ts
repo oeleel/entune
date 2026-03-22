@@ -84,3 +84,41 @@ export type ChatResponse = {
   reply: string;
   referencedVisitIds: string[];
 };
+
+// --- Pivot: Two-Device Doctor/Patient Model ---
+
+export type SessionStatus = 'waiting' | 'active' | 'ended';
+
+export type Session = {
+  id: string;
+  userId: string;
+  joinCode: string;
+  status: SessionStatus;
+  languagePatient: SupportedLanguage;
+  languageProvider: SupportedLanguage;
+  patientName: string | null;
+  patientEmail: string | null;
+  startedAt: string;
+  endedAt: string | null;
+};
+
+export type DoctorReport = {
+  visitId: string;
+  subjective: string;
+  objective: string;
+  assessment: string;
+  plan: string;
+  culturalConsiderations: string;
+  languagePair: LanguagePair;
+  generatedAt: string;
+};
+
+export type PatientReport = {
+  visitId: string;
+  summary: string;
+  medications: { name: string; instructions: string }[];
+  followUps: { item: string; date?: string }[];
+  warningSignsToWatchFor: string[];
+  language: SupportedLanguage;
+  generatedAt: string;
+};
