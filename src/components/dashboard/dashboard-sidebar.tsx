@@ -27,15 +27,16 @@ export function DashboardSidebar() {
   const { user } = useUser();
 
   return (
-    <nav aria-label="Dashboard navigation" className="flex flex-col h-full bg-card border-r">
-      {/* Logo */}
-      <div className="p-4 border-b">
+    <nav aria-label="Dashboard navigation" className="flex flex-col h-full w-full bg-card border-r">
+      {/* Logo — text hidden at tablet, shown at desktop */}
+      <div className="border-b p-4 md:flex md:items-center md:justify-center lg:justify-start">
         <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
-          Entune
+          <span className="sidebar-label">Entune</span>
+          <span className="sidebar-collapsed-label">E</span>
         </Link>
       </div>
 
-      {/* Nav Items */}
+      {/* Nav Items — icon-only at tablet, full at desktop */}
       <div className="flex-1 py-2">
         {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
           const isActive =
@@ -47,7 +48,8 @@ export function DashboardSidebar() {
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg text-sm font-medium transition-colors ${
+              title={label}
+              className={`flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg text-sm font-medium transition-colors md:justify-center md:px-2 md:gap-0 lg:justify-start lg:px-4 lg:gap-3 ${
                 isActive
                   ? 'bg-teal-50 text-teal-500'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted'
@@ -60,9 +62,9 @@ export function DashboardSidebar() {
         })}
       </div>
 
-      {/* User section at bottom */}
+      {/* User section at bottom — avatar only at tablet */}
       {user && (
-        <div className="border-t p-4 flex items-center gap-3">
+        <div className="border-t p-4 flex items-center gap-3 md:justify-center md:gap-0 lg:justify-start lg:gap-3">
           <Avatar className="h-8 w-8">
             {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.name} />}
             <AvatarFallback className="text-xs">{getInitials(user.name)}</AvatarFallback>

@@ -1142,6 +1142,10 @@
 }
 
 /* Sidebar responsive: icon-only at tablet (md), full at desktop (lg) */
+.sidebar-collapsed-label {
+  display: none;
+}
+
 @media (min-width: 768px) {
   .sidebar-label {
     display: none;
