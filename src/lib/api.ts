@@ -8,6 +8,8 @@ import type {
   SupportedLanguage,
   ChatRequest,
   ChatResponse,
+  DoctorReport,
+  PatientReport,
 } from './types';
 
 export async function translate(request: TranslationRequest): Promise<TranslationResponse> {
@@ -61,5 +63,46 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
 export async function healthCheck(): Promise<{ status: string; timestamp: number }> {
   const res = await fetch('/api/health');
   if (!res.ok) throw new Error(`Health check failed: ${res.statusText}`);
+  return res.json();
+}
+
+// Session API client functions
+
+export async function createSession(
+  patientLanguage: SupportedLanguage,
+  providerLanguage: SupportedLanguage
+): Promise<{ visitId: string; joinCode: string }> {
+  const res = await fetch('/api/session/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ patientLanguage, providerLanguage }),
+  });
+  if (!res.ok) throw new Error(`Create session failed: ${res.statusText}`);
+  return res.json();
+}
+
+export async function joinSession(
+  joinCode: string,
+  patientName?: string,
+  patientEmail?: string
+): Promise<{ visitId: string; patientLanguage: string; providerLanguage: string }> {
+  const res = await fetch('/api/session/join', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ joinCode, patientName, patientEmail }),
+  });
+  if (!res.ok) throw new Error(`Join session failed: ${res.statusText}`);
+  return res.json();
+}
+
+export async function endSession(
+  visitId: string
+): Promise<{ doctorReport: DoctorReport; patientReport: PatientReport }> {
+  const res = await fetch('/api/session/end', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ visitId }),
+  });
+  if (!res.ok) throw new Error(`End session failed: ${res.statusText}`);
   return res.json();
 }
