@@ -51,7 +51,7 @@ export function CulturalFlagCard({ flag }: { flag: CulturalFlag }) {
 
   return (
     <div
-      role="alert"
+      role={tier === 'safety' ? 'alert' : 'status'}
       aria-live={tier === 'safety' ? 'assertive' : 'polite'}
       className={`
         cultural-flag ${s.bg} ${s.border}
@@ -61,7 +61,7 @@ export function CulturalFlagCard({ flag }: { flag: CulturalFlag }) {
     >
       {/* Header */}
       <div className="flex items-center gap-2 mb-2">
-        <Icon className={`w-4 h-4 shrink-0 ${s.icon}`} />
+        <Icon className={`w-4 h-4 shrink-0 ${s.icon}`} aria-hidden="true" />
         <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {s.label}
         </span>
