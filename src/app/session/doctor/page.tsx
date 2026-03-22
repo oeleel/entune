@@ -30,7 +30,6 @@ function DoctorSessionContent() {
     interimTranscript,
     startListening,
     stopListening,
-    resetTranscript,
   } = useSpeechRecognition(providerLang, 'continuous');
 
   const lastProcessedRef = useRef('');
