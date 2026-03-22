@@ -3,11 +3,13 @@
 import { Suspense, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { useI18n } from '@/components/providers/i18n-provider';
 import { MarketingBackLink } from '@/components/marketing/marketing-back-link';
 import { MarketingInnerHeader } from '@/components/marketing/marketing-inner-header';
 
 function LoginForm() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const router = useRouter();
   const authError = searchParams.get('error') === 'auth';
@@ -16,9 +18,9 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [mode, setMode] = useState<'sign_in' | 'sign_up'>('sign_in');
 
   const handleGoogleSignIn = async () => {
+    if (!isSupabaseConfigured()) return;
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -31,37 +33,24 @@ function LoginForm() {
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!isSupabaseConfigured()) {
+      setError(t('login.signInUnavailable'));
+      return;
+    }
     setIsLoading(true);
 
     const supabase = createClient();
 
-    if (mode === 'sign_up') {
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/api/auth/callback`,
-        },
-      });
-      if (signUpError) {
-        setError(signUpError.message);
-        setIsLoading(false);
-        return;
-      }
-      setError(null);
-      router.push('/dashboard');
-    } else {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (signInError) {
-        setError(signInError.message);
-        setIsLoading(false);
-        return;
-      }
-      router.push('/dashboard');
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (signInError) {
+      setError(signInError.message);
+      setIsLoading(false);
+      return;
     }
+    router.push('/dashboard');
   };
 
   return (
@@ -71,11 +60,11 @@ function LoginForm() {
         <MarketingInnerHeader />
 
         <div className="entune-form-box">
-          <h1 className="entune-form-title">Provider sign in</h1>
-          <p className="entune-form-sub">Access your dashboard and start a session</p>
+          <h1 className="entune-form-title">{t('login.title')}</h1>
+          <p className="entune-form-sub">{t('login.sub')}</p>
 
           {authError && (
-            <p className="entune-error">Authentication failed. Please try again.</p>
+            <p className="entune-error">{t('login.authFailed')}</p>
           )}
           {error && <p className="entune-error">{error}</p>}
 
@@ -102,29 +91,29 @@ function LoginForm() {
                 fill="#EA4335"
               />
             </svg>
-            Sign in with Google
+            {t('login.google')}
           </button>
 
           <div className="entune-or">
-            <span>or</span>
+            <span>{t('login.or')}</span>
           </div>
 
           <form onSubmit={handleEmailAuth}>
             <div className="entune-field">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email">{t('login.email')}</label>
               <input
                 id="email"
                 className="entune-input"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@hospital.org"
+                placeholder={t('login.emailPlaceholder')}
                 required
                 autoComplete="email"
               />
             </div>
             <div className="entune-field">
-              <label htmlFor="password">Password</label>
+              <label htmlFor="password">{t('login.password')}</label>
               <input
                 id="password"
                 className="entune-input"
@@ -134,9 +123,7 @@ function LoginForm() {
                 placeholder="••••••••"
                 required
                 minLength={6}
-                autoComplete={
-                  mode === 'sign_up' ? 'new-password' : 'current-password'
-                }
+                autoComplete="current-password"
               />
             </div>
             <button
@@ -144,63 +131,21 @@ function LoginForm() {
               className="entune-btn entune-btn-teal"
               disabled={isLoading}
             >
-              {isLoading
-                ? mode === 'sign_up'
-                  ? 'Creating account...'
-                  : 'Signing in...'
-                : mode === 'sign_up'
-                  ? 'Create account'
-                  : 'Sign in'}
+              {isLoading ? t('login.signingIn') : t('login.signIn')}
             </button>
           </form>
 
           <p className="entune-help">
-            {mode === 'sign_in' ? (
-              <>
-                No account?{' '}
-                <button
-                  type="button"
-                  className="entune-link-btn"
-                  onClick={() => {
-                    setMode('sign_up');
-                    setError(null);
-                  }}
-                >
-                  Create one
-                </button>
-              </>
-            ) : (
-              <>
-                Already have an account?{' '}
-                <button
-                  type="button"
-                  className="entune-link-btn"
-                  onClick={() => {
-                    setMode('sign_in');
-                    setError(null);
-                  }}
-                >
-                  Sign in
-                </button>
-              </>
-            )}
-          </p>
-
-          <p className="entune-help">
-            Don&apos;t have an account? Contact your administrator.
-          </p>
-
-          <p className="entune-help">
-            <Link href="/forgot-password">Forgot password?</Link>
+            <Link href="/forgot-password">{t('login.forgotPassword')}</Link>
             <span aria-hidden className="mx-2 opacity-40">
               ·
             </span>
-            <Link href="/signup">New provider signup</Link>
+            <Link href="/signup">{t('login.newSignup')}</Link>
           </p>
 
           <p className="entune-help">
-            Are you a patient?{' '}
-            <Link href="/join">Join a session instead</Link>
+            {t('login.patientPrompt')}{' '}
+            <Link href="/join">{t('login.joinInstead')}</Link>
           </p>
         </div>
       </div>

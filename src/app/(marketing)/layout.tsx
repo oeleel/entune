@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { DM_Sans, Playfair_Display } from 'next/font/google';
 
 import { MarketingShell } from '@/components/marketing/marketing-shell';
+import { SiteLanguageSwitcher } from '@/components/marketing/site-language-switcher';
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -18,7 +19,10 @@ const playfair = Playfair_Display({
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
     <div className={`${dmSans.variable} ${playfair.variable} min-h-screen`}>
-      <MarketingShell>{children}</MarketingShell>
+      <MarketingShell>
+        <SiteLanguageSwitcher />
+        {children}
+      </MarketingShell>
     </div>
   );
 }

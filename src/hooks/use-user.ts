@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import type { UserProfile } from '@/lib/types';
 
 export function useUser() {
@@ -9,6 +9,12 @@ export function useUser() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (!isSupabaseConfigured()) {
+      setUser(null);
+      setIsLoading(false);
+      return;
+    }
+
     const supabase = createClient();
 
     async function getUser() {

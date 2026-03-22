@@ -1,38 +1,42 @@
+'use client';
+
 import Link from 'next/link';
 
 import { DoctorPlaceholderPage } from '@/components/doctor-desktop/doctor-placeholder-page';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export default function SignupPage() {
+  const { t } = useI18n();
   return (
     <DoctorPlaceholderPage
-      title="Sign up"
-      description="Create a provider account for your organization."
+      title={t('signup.title')}
+      description={t('signup.description')}
     >
       <form className="max-w-sm space-y-0" action="#" method="post">
         <div className="entune-dd-field">
-          <label htmlFor="su-name">Full name</label>
+          <label htmlFor="su-name">{t('signup.fullName')}</label>
           <input
             id="su-name"
             className="entune-dd-input"
             type="text"
             name="name"
-            placeholder="Dr. Jane Smith"
+            placeholder={t('signup.fullNamePlaceholder')}
             autoComplete="name"
           />
         </div>
         <div className="entune-dd-field">
-          <label htmlFor="su-email">Work email</label>
+          <label htmlFor="su-email">{t('signup.workEmail')}</label>
           <input
             id="su-email"
             className="entune-dd-input"
             type="email"
             name="email"
-            placeholder="you@hospital.org"
+            placeholder={t('signup.workEmailPlaceholder')}
             autoComplete="email"
           />
         </div>
         <div className="entune-dd-field">
-          <label htmlFor="su-password">Password</label>
+          <label htmlFor="su-password">{t('signup.password')}</label>
           <input
             id="su-password"
             className="entune-dd-input"
@@ -45,14 +49,14 @@ export default function SignupPage() {
         </div>
         <div className="entune-dd-actions">
           <button type="button" className="entune-dd-btn entune-dd-btn-teal">
-            Create account
+            {t('signup.create')}
           </button>
         </div>
       </form>
-      <p className="entune-dd-muted mt-5">
-        Already registered?{' '}
+      <p className="entune-dd-muted entune-dd-follow-link">
+        {t('signup.haveAccount')}{' '}
         <Link href="/login" className="entune-dd-link">
-          Sign in
+          {t('signup.signIn')}
         </Link>
       </p>
     </DoctorPlaceholderPage>

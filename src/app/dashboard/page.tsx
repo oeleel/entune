@@ -165,7 +165,6 @@ function DashboardContent() {
                         <SelectContent>
                           <SelectItem value="ko-KR">Korean</SelectItem>
                           <SelectItem value="es-ES">Spanish</SelectItem>
-                          <SelectItem value="en-US">English</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

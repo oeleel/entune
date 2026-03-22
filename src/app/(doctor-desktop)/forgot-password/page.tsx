@@ -1,34 +1,38 @@
+'use client';
+
 import Link from 'next/link';
 
 import { DoctorPlaceholderPage } from '@/components/doctor-desktop/doctor-placeholder-page';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export default function ForgotPasswordPage() {
+  const { t } = useI18n();
   return (
     <DoctorPlaceholderPage
-      title="Forgot password?"
-      description="Enter the email on your account and we’ll send a reset link."
+      title={t('forgot.title')}
+      description={t('forgot.description')}
     >
       <form className="max-w-sm" action="#" method="post">
         <div className="entune-dd-field">
-          <label htmlFor="fp-email">Email</label>
+          <label htmlFor="fp-email">{t('forgot.email')}</label>
           <input
             id="fp-email"
             className="entune-dd-input"
             type="email"
             name="email"
-            placeholder="you@hospital.org"
+            placeholder={t('forgot.emailPlaceholder')}
             autoComplete="email"
           />
         </div>
         <div className="entune-dd-actions">
           <button type="button" className="entune-dd-btn entune-dd-btn-teal">
-            Send reset link
+            {t('forgot.send')}
           </button>
         </div>
       </form>
-      <p className="entune-dd-muted mt-5">
+      <p className="entune-dd-muted entune-dd-follow-link">
         <Link href="/login" className="entune-dd-link">
-          ← Back to sign in
+          {t('forgot.backToSignIn')}
         </Link>
       </p>
     </DoctorPlaceholderPage>

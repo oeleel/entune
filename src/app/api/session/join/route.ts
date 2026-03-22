@@ -1,31 +1,51 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import type { SupportedLanguage } from '@/lib/types';
+import { isPatientUiLanguage } from '@/lib/patient-languages';
 
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
 
     const body = await request.json();
-    const { joinCode, patientName, patientEmail } = body as {
+    const { joinCode, patientName, patientEmail, patientLanguage } = body as {
       joinCode: string;
       patientName?: string;
       patientEmail?: string;
+      patientLanguage?: string;
     };
 
-    if (!joinCode) {
+    if (!joinCode?.trim()) {
       return NextResponse.json(
         { error: 'Missing required field: joinCode' },
         { status: 400 }
       );
     }
 
+    if (!patientName?.trim() || !patientEmail?.trim()) {
+      return NextResponse.json(
+        { error: 'Name and email are required' },
+        { status: 400 }
+      );
+    }
+
+    if (!patientLanguage || !isPatientUiLanguage(patientLanguage)) {
+      return NextResponse.json(
+        { error: 'A valid patient language is required' },
+        { status: 400 }
+      );
+    }
+
+    const langPatient = patientLanguage as SupportedLanguage;
+
     // Atomic update: only succeeds if join_code matches AND status is 'waiting'
     const { data: visit, error: updateError } = await supabase
       .from('visits')
       .update({
         status: 'active',
-        patient_name: patientName || null,
-        patient_email: patientEmail || null,
+        patient_name: patientName.trim(),
+        patient_email: patientEmail.trim(),
+        language_patient: langPatient,
       })
       .eq('join_code', joinCode)
       .eq('status', 'waiting')
@@ -41,7 +61,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       visitId: visit.id,
-      patientLanguage: visit.language_patient,
+      patientLanguage: langPatient,
       providerLanguage: visit.language_provider,
     });
   } catch (error) {

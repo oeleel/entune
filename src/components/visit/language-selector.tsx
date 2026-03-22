@@ -8,12 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { SupportedLanguage } from '@/lib/types';
-
-const LANGUAGES: { value: SupportedLanguage; label: string }[] = [
-  { value: 'en-US', label: 'English' },
-  { value: 'ko-KR', label: 'Korean (한국어)' },
-  { value: 'es-ES', label: 'Spanish (Español)' },
-];
+import { PATIENT_LANGUAGES } from '@/lib/patient-languages';
 
 export function LanguageSelector({
   value,
@@ -32,7 +27,7 @@ export function LanguageSelector({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {LANGUAGES.map((lang) => (
+          {PATIENT_LANGUAGES.map((lang) => (
             <SelectItem key={lang.value} value={lang.value}>
               {lang.label}
             </SelectItem>
