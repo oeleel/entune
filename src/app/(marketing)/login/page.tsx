@@ -20,21 +20,30 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleGoogleSignIn = async () => {
-    if (!isSupabaseConfigured()) return;
-    setError(null);
-    const supabase = createClient();
-    const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/api/auth/callback`,
-      },
-    });
-    if (oauthError) {
-      setError(oauthError.message);
+    if (!isSupabaseConfigured()) {
+      setError('Authentication service is not configured. Please try again later.');
       return;
     }
-    if (data?.url) {
-      window.location.href = data.url;
+    setError(null);
+    try {
+      const supabase = createClient();
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/api/auth/callback`,
+        },
+      });
+      if (oauthError) {
+        setError(oauthError.message);
+        return;
+      }
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        setError('Unable to start Google sign-in. Please try again.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
     }
   };
 
