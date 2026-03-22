@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AuthGuard } from '@/components/shared/auth-guard';
 import { CulturalFlagCard } from '@/components/visit/cultural-flag-card';
@@ -199,7 +199,9 @@ function DoctorSessionContent() {
 export default function DoctorSessionPage() {
   return (
     <AuthGuard>
-      <DoctorSessionContent />
+      <Suspense fallback={<p>Loading...</p>}>
+        <DoctorSessionContent />
+      </Suspense>
     </AuthGuard>
   );
 }
