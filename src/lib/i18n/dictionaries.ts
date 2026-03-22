@@ -24,7 +24,7 @@ export const dictionaries: Record<SiteLocale, Messages> = {
     login: {
       title: 'Sign in to Entune',
       titleRegister: 'Create an account',
-      sub: 'Medical interpretation, reimagined.',
+      sub: 'Healthcare, in harmony.',
       authFailed: 'Sign-in failed. Please try again.',
       google: 'Continue with Google',
       or: 'or',
