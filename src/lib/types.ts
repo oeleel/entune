@@ -78,6 +78,7 @@ export type ChatRequest = {
   message: string;
   userId: string;
   preferredLanguage: SupportedLanguage; // respond in this language
+  visitId?: string; // scope to single visit when provided
 };
 
 export type ChatResponse = {

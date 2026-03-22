@@ -6,6 +6,8 @@ import type {
   VisitSummary,
   LanguagePair,
   CulturalFlag,
+  DoctorReport,
+  PatientReport,
 } from './types';
 
 const anthropic = new Anthropic();
@@ -250,4 +252,114 @@ ${visitHistory}`;
   }
 
   return { reply, referencedVisitIds };
+}
+
+export async function generateDoctorReport(
+  transcript: TranscriptEntry[],
+  culturalFlags: CulturalFlag[],
+  languagePair: LanguagePair
+): Promise<Omit<DoctorReport, 'visitId'>> {
+  const transcriptText = transcript
+    .map(
+      (e) =>
+        `[${e.speaker.toUpperCase()}] ${e.originalText}\n→ ${e.translatedText}`
+    )
+    .join('\n\n');
+
+  const flagsText =
+    culturalFlags.length > 0
+      ? culturalFlags
+          .map(
+            (f) =>
+              `- ${f.term} (${f.literal}): ${f.clinicalContext}. Screen for: ${f.screenFor.join(', ')}${f.safetyNote ? `. Safety: ${f.safetyNote}` : ''}`
+          )
+          .join('\n')
+      : 'None detected.';
+
+  const systemPrompt = `You are a medical documentation assistant. Generate a SOAP-style clinical note from this bilingual visit transcript.
+
+Return ONLY valid JSON:
+{
+  "subjective": "Patient's reported symptoms, concerns, and history (clinical language)",
+  "objective": "Observable findings mentioned during the visit",
+  "assessment": "Clinical assessment based on the conversation",
+  "plan": "Follow-up items, medications, referrals discussed",
+  "culturalConsiderations": "Cultural health concepts detected and their clinical relevance"
+}
+
+CULTURAL FLAGS DETECTED:
+${flagsText}`;
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 2048,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: transcriptText || 'No transcript entries recorded.' }],
+  });
+
+  const content = response.content[0];
+  if (content.type !== 'text') throw new Error('Unexpected response type from Claude');
+
+  const parsed = parseClaudeJSON<{
+    subjective: string;
+    objective: string;
+    assessment: string;
+    plan: string;
+    culturalConsiderations: string;
+  }>(content.text);
+
+  return {
+    ...parsed,
+    languagePair,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+export async function generatePatientReport(
+  transcript: TranscriptEntry[],
+  language: SupportedLanguage
+): Promise<Omit<PatientReport, 'visitId'>> {
+  const langName = LANGUAGE_NAMES[language];
+
+  const transcriptText = transcript
+    .map(
+      (e) =>
+        `[${e.speaker.toUpperCase()}] ${e.originalText}\n→ ${e.translatedText}`
+    )
+    .join('\n\n');
+
+  const systemPrompt = `You are a patient education assistant. Generate a simple visit summary for a patient in ${langName} at a 6th-grade reading level.
+
+Return ONLY valid JSON:
+{
+  "summary": "Brief, simple summary of what happened during the visit (in ${langName})",
+  "medications": [{"name": "medication name", "instructions": "simple instructions in ${langName}"}],
+  "followUps": [{"item": "what to do next in ${langName}", "date": "when, if mentioned"}],
+  "warningSignsToWatchFor": ["simple warning sign in ${langName}"]
+}
+
+Use empty arrays if nothing was discussed. Keep language simple and reassuring.`;
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 2048,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: transcriptText || 'No transcript entries recorded.' }],
+  });
+
+  const content = response.content[0];
+  if (content.type !== 'text') throw new Error('Unexpected response type from Claude');
+
+  const parsed = parseClaudeJSON<{
+    summary: string;
+    medications: { name: string; instructions: string }[];
+    followUps: { item: string; date?: string }[];
+    warningSignsToWatchFor: string[];
+  }>(content.text);
+
+  return {
+    ...parsed,
+    language,
+    generatedAt: new Date().toISOString(),
+  };
 }

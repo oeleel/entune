@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { chat } from '@/lib/api';
 import type { ChatMessage, SupportedLanguage } from '@/lib/types';
 
-export function useChat(userId: string, preferredLanguage: SupportedLanguage) {
+export function useChat(userId: string, preferredLanguage: SupportedLanguage, visitId?: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +28,7 @@ export function useChat(userId: string, preferredLanguage: SupportedLanguage) {
           message: content,
           userId,
           preferredLanguage,
+          visitId,
         });
 
         const assistantMessage: ChatMessage = {
@@ -45,7 +46,7 @@ export function useChat(userId: string, preferredLanguage: SupportedLanguage) {
         setIsLoading(false);
       }
     },
-    [userId, preferredLanguage]
+    [userId, preferredLanguage, visitId]
   );
 
   const clearMessages = useCallback(() => {

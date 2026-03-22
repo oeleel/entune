@@ -6,7 +6,7 @@ import type { ChatRequest, ChatResponse } from '@/lib/types';
 export async function POST(request: Request) {
   try {
     const body: ChatRequest = await request.json();
-    const { message, preferredLanguage } = body;
+    const { message, preferredLanguage, visitId } = body;
 
     if (!message || !preferredLanguage) {
       return NextResponse.json(
@@ -26,32 +26,39 @@ export async function POST(request: Request) {
       );
     }
 
-    // Fetch user's visit summaries
-    const { data: visits } = await supabase
+    // Fetch visits — scoped to single visit if visitId provided, otherwise all
+    let visitsQuery = supabase
       .from('visits')
       .select('id, language_patient, language_provider, started_at, ended_at')
       .eq('user_id', user.id)
-      .order('started_at', { ascending: false })
-      .limit(20);
+      .order('started_at', { ascending: false });
+
+    if (visitId) {
+      visitsQuery = visitsQuery.eq('id', visitId);
+    } else {
+      visitsQuery = visitsQuery.limit(20);
+    }
+
+    const { data: visits } = await visitsQuery;
 
     const visitIds = visits?.map((v) => v.id) ?? [];
 
-    // Fetch summaries for those visits
+    // Fetch summaries (include doctor/patient reports)
     const { data: summaries } = visitIds.length > 0
       ? await supabase
           .from('visit_summaries')
-          .select('visit_id, summary_data, generated_at')
+          .select('visit_id, summary_data, doctor_report, patient_report, generated_at')
           .in('visit_id', visitIds)
       : { data: [] };
 
-    // Fetch recent transcript entries for context
+    // Fetch transcript entries for context
     const { data: transcripts } = visitIds.length > 0
       ? await supabase
           .from('transcript_entries')
           .select('visit_id, speaker, original_text, translated_text, cultural_flag, timestamp')
           .in('visit_id', visitIds)
           .order('timestamp', { ascending: true })
-          .limit(200)
+          .limit(visitId ? 500 : 200)
       : { data: [] };
 
     // Serialize visit history for Claude
@@ -70,11 +77,18 @@ export async function POST(request: Request) {
           const sd = summary.summary_data as Record<string, unknown>;
           visitHistory += `Summary: ${JSON.stringify(sd, null, 2)}\n`;
         }
+        if (summary?.doctor_report) {
+          visitHistory += `Doctor Report: ${JSON.stringify(summary.doctor_report, null, 2)}\n`;
+        }
+        if (summary?.patient_report) {
+          visitHistory += `Patient Report: ${JSON.stringify(summary.patient_report, null, 2)}\n`;
+        }
 
         const visitTranscripts = transcripts?.filter((t) => t.visit_id === visit.id);
         if (visitTranscripts && visitTranscripts.length > 0) {
           visitHistory += 'Key transcript excerpts:\n';
-          for (const t of visitTranscripts.slice(0, 20)) {
+          const limit = visitId ? visitTranscripts.length : 20;
+          for (const t of visitTranscripts.slice(0, limit)) {
             visitHistory += `  [${t.speaker}] ${t.original_text} → ${t.translated_text}\n`;
           }
         }

@@ -4,7 +4,12 @@ import { useState, useCallback, useRef } from 'react';
 import { createSpeechRecognition } from '@/lib/speech';
 import type { SupportedLanguage } from '@/lib/types';
 
-export function useSpeechRecognition(language: SupportedLanguage) {
+export type SpeechMode = 'continuous' | 'push-to-talk';
+
+export function useSpeechRecognition(
+  language: SupportedLanguage,
+  mode: SpeechMode = 'continuous'
+) {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [interimTranscript, setInterimTranscript] = useState('');
@@ -13,7 +18,7 @@ export function useSpeechRecognition(language: SupportedLanguage) {
   const startListening = useCallback(() => {
     const recognition = createSpeechRecognition({
       language,
-      continuous: true,
+      continuous: mode === 'continuous',
       interimResults: true,
       onResult: (text, isFinal) => {
         if (isFinal) {
@@ -37,7 +42,7 @@ export function useSpeechRecognition(language: SupportedLanguage) {
       recognition.start();
       setIsListening(true);
     }
-  }, [language]);
+  }, [language, mode]);
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
