@@ -777,11 +777,22 @@
 }
 
 @media (max-width: 480px) {
-  .entune-lang-switch {
-    right: auto;
-    left: 50%;
-    transform: translateX(-50%);
-    justify-content: center;
+  .entune-lang-other {
+    max-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    border-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-width 0.25s ease, padding 0.25s ease, opacity 0.2s ease, border-width 0.25s ease;
+  }
+
+  .entune-lang-other-visible {
+    max-width: 4rem;
+    padding-left: 12px;
+    padding-right: 12px;
+    border-width: 1px;
+    opacity: 1;
   }
 }
 
