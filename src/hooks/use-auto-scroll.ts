@@ -5,42 +5,35 @@ const BOTTOM_THRESHOLD = 100;
 /**
  * Smart auto-scroll that respects user intent.
  * Only auto-scrolls when the user is near the bottom of the scroll area.
- * When the user scrolls up to read earlier content, auto-scroll pauses.
- *
- * Uses a callback ref so the scroll listener is attached/detached
- * whenever the ScrollArea mounts/unmounts (e.g. status transitions).
+ * When the user scrolls up to read earlier content, auto-scroll pauses
+ * and a "Scroll to latest" button appears.
  */
 export function useAutoScroll(deps: unknown[]) {
   const isAtBottomRef = useRef(true);
+  const isAutoScrollingRef = useRef(false);
   const viewportRef = useRef<HTMLElement | null>(null);
   const [showButton, setShowButton] = useState(false);
-  // Trigger re-run of the auto-scroll effect when the node changes
-  const [, setMounted] = useState(0);
 
-  // Callback ref: attached to the ScrollArea wrapper div.
-  // When the element mounts, we find the viewport inside it and wire up the scroll listener.
+  // Callback ref: find the viewport inside the ScrollArea wrapper.
   const containerRef = useCallback((node: HTMLDivElement | null) => {
-    // Clean up previous listener
     viewportRef.current = null;
-
     if (!node) return;
 
     const viewport = node.querySelector<HTMLElement>(
       '[data-slot="scroll-area-viewport"]'
     );
-    if (!viewport) return;
-
-    viewportRef.current = viewport;
-    // Force the auto-scroll effect to re-run now that we have a viewport
-    setMounted((n) => n + 1);
+    if (viewport) viewportRef.current = viewport;
   }, []);
 
-  // Listen to scroll events on the viewport
+  // Attach scroll listener. Re-runs when viewportRef is set via containerRef.
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
 
     const handleScroll = () => {
+      // Ignore scroll events fired during our own programmatic scrollTo
+      if (isAutoScrollingRef.current) return;
+
       const { scrollTop, scrollHeight, clientHeight } = viewport;
       const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
       const atBottom = distanceFromBottom <= BOTTOM_THRESHOLD;
@@ -59,9 +52,23 @@ export function useAutoScroll(deps: unknown[]) {
     const viewport = viewportRef.current;
     if (!viewport) return;
 
-    // Use requestAnimationFrame to ensure the DOM has been painted with new content
+    // Set flag so the scroll listener ignores events from this animation
+    isAutoScrollingRef.current = true;
+
+    // Double rAF ensures React's DOM mutations are flushed and painted
     requestAnimationFrame(() => {
-      viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+      requestAnimationFrame(() => {
+        viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+
+        // Clear the flag after the smooth scroll settles (~400ms is generous)
+        setTimeout(() => {
+          isAutoScrollingRef.current = false;
+          // Re-check position after scroll finishes
+          const { scrollTop, scrollHeight, clientHeight } = viewport;
+          const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+          isAtBottomRef.current = distanceFromBottom <= BOTTOM_THRESHOLD;
+        }, 400);
+      });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
@@ -70,9 +77,14 @@ export function useAutoScroll(deps: unknown[]) {
     const viewport = viewportRef.current;
     if (!viewport) return;
 
+    isAutoScrollingRef.current = true;
     viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
-    isAtBottomRef.current = true;
-    setShowButton(false);
+
+    setTimeout(() => {
+      isAutoScrollingRef.current = false;
+      isAtBottomRef.current = true;
+      setShowButton(false);
+    }, 400);
   }, []);
 
   return { containerRef, showButton, scrollToBottom };
