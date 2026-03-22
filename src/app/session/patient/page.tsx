@@ -1,31 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useSessionStatus } from '@/hooks/use-session-status';
 import { useRealtimeTranscript } from '@/hooks/use-realtime-transcript';
+import { useSessionStatus } from '@/hooks/use-session-status';
 import { useHoldToSpeak } from '@/hooks/use-hold-to-speak';
+import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { SupportedLanguage, PatientReport } from '@/lib/types';
 
-export default function PatientSessionPage() {
+function PatientSessionContent() {
   const searchParams = useSearchParams();
   const visitId = searchParams.get('visitId');
 
-  const { status } = useSessionStatus(visitId);
-  const { transcript } = useRealtimeTranscript(visitId);
-
-  const [patientLanguage, setPatientLanguage] = useState<SupportedLanguage>('ko-KR');
-  const [providerLanguage, setProviderLanguage] = useState<SupportedLanguage>('en-US');
+  const [patientLang, setPatientLang] = useState<SupportedLanguage>('ko-KR');
+  const [providerLang, setProviderLang] = useState<SupportedLanguage>('en-US');
   const [patientReport, setPatientReport] = useState<PatientReport | null>(null);
 
+  const { status } = useSessionStatus(visitId);
+  const { transcript } = useRealtimeTranscript(visitId);
   const { isHolding, isTranslating, startHolding, stopHolding } = useHoldToSpeak(
     visitId,
-    patientLanguage,
-    providerLanguage
+    patientLang,
+    providerLang
   );
 
-  // Fetch visit languages
+  // Fetch visit details for language pair
   useEffect(() => {
     if (!visitId) return;
     const supabase = createClient();
@@ -36,13 +35,13 @@ export default function PatientSessionPage() {
       .single()
       .then(({ data }) => {
         if (data) {
-          setPatientLanguage(data.language_patient as SupportedLanguage);
-          setProviderLanguage(data.language_provider as SupportedLanguage);
+          setPatientLang(data.language_patient as SupportedLanguage);
+          setProviderLang(data.language_provider as SupportedLanguage);
         }
       });
   }, [visitId]);
 
-  // Fetch patient report when session ends
+  // When session ends, fetch patient report
   useEffect(() => {
     if (status !== 'ended' || !visitId) return;
     const supabase = createClient();
@@ -58,72 +57,61 @@ export default function PatientSessionPage() {
       });
   }, [status, visitId]);
 
-  if (!visitId) return <p>Missing visit ID.</p>;
+  // Filter to show only provider messages as subtitles
+  const providerMessages = transcript.filter((t) => t.speaker === 'provider');
 
-  // Filter to show doctor messages translated into patient language
-  const doctorMessages = transcript.filter((t) => t.speaker === 'provider');
-  const patientMessages = transcript.filter((t) => t.speaker === 'patient');
+  if (!visitId) {
+    return <p>No visit ID provided.</p>;
+  }
 
   return (
-    <div style={{ padding: '1rem', maxWidth: '600px', margin: '0 auto' }}>
+    <div>
       <h1>Patient Session</h1>
 
+      {status === 'waiting' && (
+        <p>Connecting to doctor...</p>
+      )}
+
       {status === 'active' && (
-        <>
-          {/* Doctor's translated speech as subtitles */}
-          <div style={{ marginBottom: '1rem' }}>
-            <h2>Doctor says:</h2>
-            <div style={{ minHeight: '60px', background: '#e8f4fd', borderRadius: '4px', padding: '0.75rem' }}>
-              {doctorMessages.length === 0 ? (
-                <p style={{ color: '#999' }}>Waiting for doctor to speak...</p>
-              ) : (
-                <p style={{ fontSize: '1.25rem' }}>
-                  {doctorMessages[doctorMessages.length - 1].translatedText}
-                </p>
-              )}
-            </div>
+        <div>
+          <h2>Doctor is speaking:</h2>
+          <div>
+            {providerMessages.map((entry, i) => (
+              <div key={i} style={{ marginBottom: 8 }}>
+                <p>{entry.translatedText}</p>
+              </div>
+            ))}
+            {providerMessages.length === 0 && <p>Waiting for doctor to speak...</p>}
           </div>
 
-          {/* Hold to speak button */}
-          <div style={{ textAlign: 'center', margin: '2rem 0' }}>
+          <hr />
+
+          <div>
             <button
               onMouseDown={startHolding}
               onMouseUp={stopHolding}
               onTouchStart={startHolding}
               onTouchEnd={stopHolding}
+              disabled={isTranslating}
               style={{
-                width: '120px',
-                height: '120px',
-                borderRadius: '50%',
-                fontSize: '1rem',
-                background: isHolding ? '#ef4444' : isTranslating ? '#f59e0b' : '#3b82f6',
-                color: 'white',
-                border: 'none',
-                cursor: 'pointer',
+                padding: '24px 48px',
+                fontSize: '1.2em',
+                cursor: isTranslating ? 'wait' : 'pointer',
               }}
             >
-              {isHolding ? 'Listening...' : isTranslating ? 'Translating...' : 'Hold to Speak'}
+              {isTranslating
+                ? 'Translating...'
+                : isHolding
+                  ? 'Listening... (release to send)'
+                  : 'Hold to Speak'}
             </button>
           </div>
-
-          {/* Full transcript */}
-          <details>
-            <summary>Full Transcript ({transcript.length} messages)</summary>
-            <div style={{ maxHeight: '300px', overflowY: 'auto', padding: '0.5rem' }}>
-              {transcript.map((entry, i) => (
-                <div key={i} style={{ marginBottom: '0.5rem', padding: '0.25rem', background: entry.speaker === 'provider' ? '#e8f4fd' : '#f0fde8', borderRadius: '4px' }}>
-                  <strong>{entry.speaker === 'provider' ? 'Doctor' : 'You'}:</strong>{' '}
-                  {entry.translatedText}
-                </div>
-              ))}
-            </div>
-          </details>
-        </>
+        </div>
       )}
 
       {status === 'ended' && (
         <div>
-          <h2>Session Complete</h2>
+          <h2>Session Ended</h2>
           {patientReport ? (
             <div>
               <h3>Your Visit Summary</h3>
@@ -134,7 +122,9 @@ export default function PatientSessionPage() {
                   <h4>Medications</h4>
                   <ul>
                     {patientReport.medications.map((med, i) => (
-                      <li key={i}><strong>{med.name}:</strong> {med.instructions}</li>
+                      <li key={i}>
+                        <strong>{med.name}</strong>: {med.instructions}
+                      </li>
                     ))}
                   </ul>
                 </>
@@ -145,7 +135,9 @@ export default function PatientSessionPage() {
                   <h4>Follow-ups</h4>
                   <ul>
                     {patientReport.followUps.map((fu, i) => (
-                      <li key={i}>{fu.item}{fu.date ? ` (${fu.date})` : ''}</li>
+                      <li key={i}>
+                        {fu.item}{fu.date ? ` — ${fu.date}` : ''}
+                      </li>
                     ))}
                   </ul>
                 </>
@@ -163,14 +155,14 @@ export default function PatientSessionPage() {
               )}
             </div>
           ) : (
-            <p>Loading your visit summary...</p>
+            <p>Loading your report...</p>
           )}
         </div>
       )}
-
-      {status === 'waiting' && (
-        <p>Waiting for session to start...</p>
-      )}
     </div>
   );
+}
+
+export default function PatientSessionPage() {
+  return <PatientSessionContent />;
 }
