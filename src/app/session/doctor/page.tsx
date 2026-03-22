@@ -207,7 +207,7 @@ function DoctorSessionContent() {
               </CardHeader>
               <CardContent className="relative">
                 <div ref={containerRef}>
-                <ScrollArea className="max-h-[400px]">
+                <ScrollArea className="h-[60vh]">
                   <div>
                     {realtimeTranscript.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-8 text-center">

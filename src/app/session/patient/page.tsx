@@ -154,7 +154,7 @@ function PatientSessionContent() {
             </CardHeader>
             <CardContent className="relative">
               <div ref={containerRef}>
-              <ScrollArea className="max-h-[500px]">
+              <ScrollArea className="h-[60vh]">
                 <div>
                   {transcript.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-8 text-center">
@@ -210,7 +210,7 @@ function PatientSessionContent() {
                 </CardHeader>
                 {transcriptOpen && (
                   <CardContent>
-                    <ScrollArea className="max-h-[400px]">
+                    <ScrollArea className="h-[40vh]">
                       <div className="space-y-3">
                         {transcript.map((entry, i) => (
                           <div key={i} className="rounded-lg p-3 bg-muted/40">
