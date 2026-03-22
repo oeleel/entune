@@ -1,3 +1,4 @@
+// TTS deferred — not used in current build. Kept for future integration.
 import type { SupportedLanguage } from './types';
 
 // Voice IDs for ElevenLabs multilingual voices
