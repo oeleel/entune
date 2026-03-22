@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRealtimeTranscript } from '@/hooks/use-realtime-transcript';
 import { useSessionStatus } from '@/hooks/use-session-status';
@@ -164,5 +165,9 @@ function PatientSessionContent() {
 }
 
 export default function PatientSessionPage() {
-  return <PatientSessionContent />;
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      <PatientSessionContent />
+    </Suspense>
+  );
 }
