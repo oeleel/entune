@@ -64,10 +64,13 @@ elif [ -d ".next" ]; then
   PORT=3939
   npx next start -p $PORT &>/dev/null &
   SERVER_PID=$!
-  sleep 3
-  if curl -sf "http://localhost:$PORT/api/health" | grep -q '"status":"ok"'; then
-    HEALTH_OK=true
-  fi
+  for i in 1 2 3 4 5 6 7 8; do
+    sleep 2
+    if curl -sf "http://localhost:$PORT/api/health" | grep -q '"status":"ok"'; then
+      HEALTH_OK=true
+      break
+    fi
+  done
   kill $SERVER_PID 2>/dev/null || true
   wait $SERVER_PID 2>/dev/null || true
 fi
