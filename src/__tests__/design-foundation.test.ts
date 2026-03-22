@@ -135,7 +135,7 @@ describe('Design Foundation — Custom CSS Classes', () => {
     const css = readFile(GLOBALS_CSS_PATH);
     const block = css.match(/\.transcript-text\s*\{([^}]+)\}/s);
     expect(block).not.toBeNull();
-    expect(block![1]).toMatch(/font-size\s*:\s*22px/);
+    expect(block![1]).toMatch(/font-size\s*:\s*(var\(--transcript-font-size,\s*)?22px/);
     expect(block![1]).toMatch(/line-height\s*:\s*1\.7/);
   });
 
