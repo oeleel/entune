@@ -5,15 +5,12 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import type { UserProfile } from '@/lib/types';
 
 export function useUser() {
+  const configured = isSupabaseConfigured();
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(configured);
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
-      setUser(null);
-      setIsLoading(false);
-      return;
-    }
+    if (!configured) return;
 
     const supabase = createClient();
 

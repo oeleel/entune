@@ -125,3 +125,36 @@ export type PatientReport = {
   language: SupportedLanguage;
   generatedAt: string;
 };
+
+// --- Deepgram Integration ---
+
+export type DeepgramConfig = {
+  model: string;
+  language: string;
+  diarize: boolean;
+  interim_results: boolean;
+  encoding: string;
+  sample_rate: number;
+};
+
+export type DeepgramWord = {
+  word: string;
+  start: number;
+  end: number;
+  confidence: number;
+  speaker?: number;
+};
+
+export type DeepgramResult = {
+  transcript: string;
+  confidence: number;
+  words: DeepgramWord[];
+  isFinal: boolean;
+  speechFinal: boolean;
+  speaker?: number;
+  detectedLanguage?: string;
+};
+
+export type SpeakerMap = Record<number, 'provider' | 'patient'>;
+
+export type CalibrationState = 'waiting' | 'doctor-speaking' | 'patient-speaking' | 'complete';

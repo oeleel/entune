@@ -6,7 +6,7 @@ import { AuthGuard } from '@/components/shared/auth-guard';
 import { CulturalFlagCard } from '@/components/visit/cultural-flag-card';
 import { useSessionStatus } from '@/hooks/use-session-status';
 import { useRealtimeTranscript } from '@/hooks/use-realtime-transcript';
-import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
+import { useDeepgramTranscript } from '@/hooks/use-deepgram-transcript';
 import { createClient } from '@/lib/supabase/client';
 import { endSession } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -27,17 +27,21 @@ function DoctorSessionContent() {
   const [joinCode, setJoinCode] = useState(joinCodeParam || '');
 
   const { status, error: statusError } = useSessionStatus(visitId);
-  const { transcript, error: transcriptError } = useRealtimeTranscript(visitId);
+  const { transcript: realtimeTranscript, error: transcriptError } = useRealtimeTranscript(visitId);
   const {
-    isListening,
-    transcript: spokenText,
-    interimTranscript,
+    transcript: deepgramEntries,
+    interimText,
+    isConnected,
+    error: deepgramError,
     startListening,
-    stopListening,
-  } = useSpeechRecognition(providerLang, 'continuous');
+    stopListening: stopDeepgram,
+  } = useDeepgramTranscript();
 
-  const lastProcessedRef = useRef('');
+  const processedIndexRef = useRef(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const startedRef = useRef(false);
 
+  // Fetch visit details on mount
   useEffect(() => {
     if (!visitId) return;
     const supabase = createClient();
@@ -55,54 +59,50 @@ function DoctorSessionContent() {
       });
   }, [visitId]);
 
+  // Auto-start Deepgram when session becomes active
   useEffect(() => {
-    if (status === 'active' && !isListening) {
+    if (status === 'active' && !startedRef.current) {
+      startedRef.current = true;
       startListening();
     }
-  }, [status, isListening, startListening]);
+  }, [status, startListening]);
 
+  // Process new Deepgram entries → send to /api/session/transcript (tagged as provider)
   useEffect(() => {
-    if (!spokenText || !visitId || spokenText === lastProcessedRef.current) return;
+    if (!visitId || status !== 'active') return;
 
-    const newText = spokenText.slice(lastProcessedRef.current.length).trim();
-    if (!newText) return;
+    const newEntries = deepgramEntries.slice(processedIndexRef.current);
+    if (newEntries.length === 0) return;
 
-    lastProcessedRef.current = spokenText;
+    processedIndexRef.current = deepgramEntries.length;
 
-    (async () => {
-      try {
-        const res = await fetch('/api/translate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            text: newText,
-            sourceLanguage: providerLang,
-            targetLanguage: patientLang,
-            speaker: 'provider',
-          }),
-        });
-        if (!res.ok) return;
+    for (const entry of newEntries) {
+      if (!entry.isFinal || !entry.text.trim()) continue;
 
-        const result = await res.json();
-
-        const supabase = createClient();
-        await supabase.from('transcript_entries').insert({
-          visit_id: visitId,
+      fetch('/api/session/transcript', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          visitId,
+          text: entry.text,
           speaker: 'provider',
-          original_text: result.originalText,
-          translated_text: result.translatedText,
-          cultural_flag: result.culturalFlag,
-        });
-      } catch (err) {
-        console.error('Doctor translate/insert error:', err);
-      }
-    })();
-  }, [spokenText, visitId, providerLang, patientLang]);
+          detectedLanguage: entry.detectedLanguage,
+        }),
+      }).catch((err) => console.error('Transcript submit error:', err));
+    }
+  }, [deepgramEntries, visitId, status]);
+
+  // Auto-scroll transcript
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, [realtimeTranscript, interimText]);
 
   const handleEndSession = useCallback(async () => {
     if (!visitId) return;
     setIsEnding(true);
-    stopListening();
+    stopDeepgram();
 
     try {
       await endSession(visitId);
@@ -111,9 +111,9 @@ function DoctorSessionContent() {
       console.error('Failed to end session:', err);
       setIsEnding(false);
     }
-  }, [visitId, stopListening, router]);
+  }, [visitId, stopDeepgram, router]);
 
-  const connectionError = statusError || transcriptError;
+  const connectionError = statusError || transcriptError || deepgramError;
 
   if (!visitId) {
     return (
@@ -123,7 +123,7 @@ function DoctorSessionContent() {
     );
   }
 
-  const culturalFlags = transcript
+  const culturalFlags = realtimeTranscript
     .map((e) => e.culturalFlag)
     .filter((f): f is CulturalFlag => f !== null);
 
@@ -131,9 +131,21 @@ function DoctorSessionContent() {
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Entune</h1>
-            <p className="text-sm text-muted-foreground">Doctor Session</p>
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Entune</h1>
+              <p className="text-sm text-muted-foreground">Doctor Session</p>
+            </div>
+            {status === 'active' && (
+              <Badge variant={isConnected ? 'default' : 'secondary'} className="gap-1.5">
+                <span
+                  className={`inline-block w-2 h-2 rounded-full ${
+                    isConnected ? 'bg-green-400 animate-pulse' : 'bg-gray-400'
+                  }`}
+                />
+                {isConnected ? 'Listening' : deepgramError ? 'Error' : 'Connecting...'}
+              </Badge>
+            )}
           </div>
           {status === 'active' && (
             <Button
@@ -172,68 +184,96 @@ function DoctorSessionContent() {
           </Card>
         )}
 
-        {/* Active session */}
+        {/* Active session — ambient scribe */}
         {status === 'active' && (
           <div className="space-y-6">
-            {/* Mic status */}
+            {/* Status bar */}
             <div className="flex items-center gap-3">
-              <Badge variant={isListening ? 'default' : 'secondary'}>
-                {isListening ? 'Listening' : 'Mic Off'}
-              </Badge>
-              {interimTranscript && (
-                <span className="text-sm text-muted-foreground italic truncate">
-                  {interimTranscript}
+              <Badge variant="default">Ambient Scribe</Badge>
+              <span className="text-xs text-muted-foreground">
+                {providerLang} / {patientLang}
+              </span>
+              {interimText && (
+                <span className="text-sm text-muted-foreground italic truncate flex-1">
+                  {interimText}
                 </span>
               )}
             </div>
 
-            {/* Transcript */}
+            {/* Live transcript from Supabase realtime */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Transcript</CardTitle>
+                <CardTitle className="text-base">Live Transcript</CardTitle>
               </CardHeader>
               <CardContent>
                 <ScrollArea className="max-h-[400px]">
-                  {transcript.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-8 text-center">
-                      Start speaking to see the transcript...
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {transcript.map((entry, i) => (
-                        <div
-                          key={i}
-                          className={`rounded-lg p-3 ${
-                            entry.speaker === 'provider'
-                              ? 'bg-blue-50 dark:bg-blue-950/30'
-                              : 'bg-amber-50 dark:bg-amber-950/30'
-                          }`}
-                        >
-                          <p className="text-sm">
-                            <span className="font-medium">
-                              {entry.speaker === 'provider' ? 'Doctor' : 'Patient'}:
-                            </span>{' '}
-                            {entry.originalText}
-                          </p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            → {entry.translatedText}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <div>
+                    {realtimeTranscript.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-8 text-center">
+                        Listening... speak naturally.
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {realtimeTranscript.map((entry, i) => (
+                          <div
+                            key={i}
+                            className={`rounded-lg p-3 ${
+                              entry.speaker === 'provider'
+                                ? 'bg-blue-50 dark:bg-blue-950/30'
+                                : 'bg-amber-50 dark:bg-amber-950/30'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge
+                                variant="outline"
+                                className={`text-xs ${
+                                  entry.speaker === 'provider'
+                                    ? 'border-blue-300 text-blue-700 dark:text-blue-300'
+                                    : 'border-amber-300 text-amber-700 dark:text-amber-300'
+                                }`}
+                              >
+                                {entry.speaker === 'provider' ? 'Doctor' : 'Patient'}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(entry.timestamp).toLocaleTimeString()}
+                              </span>
+                            </div>
+                            <p className="text-sm">{entry.originalText}</p>
+                            {entry.originalText !== entry.translatedText && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                &rarr; {entry.translatedText}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                        {/* Interim text — currently speaking */}
+                        {interimText && (
+                          <div className="rounded-lg p-3 bg-muted/30 border border-dashed border-muted-foreground/20">
+                            <p className="text-sm text-muted-foreground italic">
+                              {interimText}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div ref={scrollRef} />
+                  </div>
                 </ScrollArea>
               </CardContent>
             </Card>
 
             {/* Cultural flags */}
             {culturalFlags.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold">Cultural Flags</h3>
-                {culturalFlags.map((flag, i) => (
-                  <CulturalFlagCard key={i} flag={flag} />
-                ))}
-              </div>
+              <Card className="border-amber-200 dark:border-amber-800">
+                <CardHeader>
+                  <CardTitle className="text-base">Cultural Flags</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {culturalFlags.map((flag, i) => (
+                    <CulturalFlagCard key={i} flag={flag} />
+                  ))}
+                </CardContent>
+              </Card>
             )}
           </div>
         )}
@@ -257,7 +297,7 @@ function DoctorSessionContent() {
 export default function DoctorSessionPage() {
   return (
     <AuthGuard>
-      <Suspense fallback={<p className="p-8 text-muted-foreground">Loading...</p>}>
+      <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>}>
         <DoctorSessionContent />
       </Suspense>
     </AuthGuard>

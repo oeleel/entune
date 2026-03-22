@@ -30,11 +30,10 @@ type I18nContextValue = {
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<SiteLocale>('en');
+  const [locale, setLocaleState] = useState<SiteLocale>(readStoredLocale);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setLocaleState(readStoredLocale());
     setMounted(true);
   }, []);
 

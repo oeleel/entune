@@ -1,15 +1,14 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRealtimeTranscript } from '@/hooks/use-realtime-transcript';
 import { useSessionStatus } from '@/hooks/use-session-status';
-import { useHoldToSpeak } from '@/hooks/use-hold-to-speak';
+import { useDeepgramTranscript } from '@/hooks/use-deepgram-transcript';
 import { createClient } from '@/lib/supabase/client';
 import { updatePatientSessionLanguage } from '@/lib/api';
 import { PatientLanguageSelect } from '@/components/marketing/patient-language-select';
 import { toPatientUiLanguage, type PatientUiLanguage } from '@/lib/patient-languages';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -27,12 +26,20 @@ function PatientSessionContent() {
 
   const { status, error: statusError } = useSessionStatus(visitId);
   const { transcript, error: transcriptError } = useRealtimeTranscript(visitId);
-  const { isHolding, isTranslating, startHolding, stopHolding } = useHoldToSpeak(
-    visitId,
-    patientLang,
-    providerLang
-  );
+  const {
+    transcript: deepgramEntries,
+    interimText,
+    isConnected,
+    error: deepgramError,
+    startListening,
+    stopListening,
+  } = useDeepgramTranscript(visitId);
 
+  const processedIndexRef = useRef(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const startedRef = useRef(false);
+
+  // Fetch visit details on mount
   useEffect(() => {
     if (!visitId) return;
     const supabase = createClient();
@@ -50,6 +57,43 @@ function PatientSessionContent() {
       });
   }, [visitId]);
 
+  // Auto-start Deepgram when session is active
+  useEffect(() => {
+    if (status === 'active' && !startedRef.current) {
+      startedRef.current = true;
+      startListening();
+    }
+    if (status === 'ended' && startedRef.current) {
+      stopListening();
+    }
+  }, [status, startListening, stopListening]);
+
+  // Process new Deepgram entries → send to /api/session/transcript (tagged as patient)
+  useEffect(() => {
+    if (!visitId || status !== 'active') return;
+
+    const newEntries = deepgramEntries.slice(processedIndexRef.current);
+    if (newEntries.length === 0) return;
+
+    processedIndexRef.current = deepgramEntries.length;
+
+    for (const entry of newEntries) {
+      if (!entry.isFinal || !entry.text.trim()) continue;
+
+      fetch('/api/session/transcript', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          visitId,
+          text: entry.text,
+          speaker: 'patient',
+          detectedLanguage: entry.detectedLanguage,
+        }),
+      }).catch((err) => console.error('Transcript submit error:', err));
+    }
+  }, [deepgramEntries, visitId, status]);
+
+  // Fetch patient report when session ends
   useEffect(() => {
     if (status !== 'ended' || !visitId) return;
     const supabase = createClient();
@@ -65,6 +109,13 @@ function PatientSessionContent() {
       });
   }, [status, visitId]);
 
+  // Auto-scroll
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, [transcript, interimText]);
+
   async function handlePatientLanguageChange(next: PatientUiLanguage) {
     setPatientLang(next);
     setLanguageError(null);
@@ -77,7 +128,7 @@ function PatientSessionContent() {
   }
 
   const providerMessages = transcript.filter((t) => t.speaker === 'provider');
-  const connectionError = statusError || transcriptError;
+  const connectionError = statusError || transcriptError || deepgramError;
   const languageLocked = status === 'ended';
 
   if (!visitId) {
@@ -109,8 +160,19 @@ function PatientSessionContent() {
                 <p className="mt-1 text-xs text-destructive">{languageError}</p>
               )}
             </div>
-            <Badge variant={status === 'active' ? 'default' : 'secondary'}>
-              {status === 'waiting' ? 'Connecting...' : status === 'active' ? 'In Session' : 'Ended'}
+            <Badge variant={isConnected ? 'default' : status === 'active' ? 'secondary' : 'outline'} className="gap-1.5">
+              {status === 'active' && (
+                <span
+                  className={`inline-block w-2 h-2 rounded-full ${
+                    isConnected ? 'bg-green-400 animate-pulse' : 'bg-gray-400'
+                  }`}
+                />
+              )}
+              {status === 'waiting'
+                ? 'Connecting...'
+                : status === 'active'
+                  ? isConnected ? 'Listening' : 'Connecting...'
+                  : 'Ended'}
             </Badge>
           </div>
         </div>
@@ -142,43 +204,52 @@ function PatientSessionContent() {
               </CardHeader>
               <CardContent>
                 <ScrollArea className="max-h-[300px]">
-                  {providerMessages.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-8 text-center">
-                      Waiting for doctor to speak...
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {providerMessages.map((entry, i) => (
-                        <div key={i} className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3">
-                          <p className="text-sm">{entry.translatedText}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <div>
+                    {providerMessages.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-8 text-center">
+                        Waiting for doctor to speak...
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {providerMessages.map((entry, i) => (
+                          <div key={i} className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3">
+                            <p className="text-sm">{entry.translatedText}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div ref={scrollRef} />
+                  </div>
                 </ScrollArea>
               </CardContent>
             </Card>
 
             <Separator />
 
-            {/* Hold-to-speak button */}
-            <div className="flex justify-center">
-              <Button
-                size="lg"
-                variant={isHolding ? 'default' : 'outline'}
-                className="h-20 w-64 text-lg"
-                onMouseDown={startHolding}
-                onMouseUp={stopHolding}
-                onTouchStart={startHolding}
-                onTouchEnd={stopHolding}
-                disabled={isTranslating}
-              >
-                {isTranslating
-                  ? 'Translating...'
-                  : isHolding
-                    ? 'Listening... (release to send)'
-                    : 'Hold to Speak'}
-              </Button>
+            {/* Ambient mic status */}
+            <div className="text-center py-4">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50">
+                {isConnected ? (
+                  <>
+                    <span className="h-3 w-3 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-sm text-muted-foreground">
+                      Your microphone is active — speak naturally
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="h-3 w-3 rounded-full bg-gray-400" />
+                    <span className="text-sm text-muted-foreground">
+                      Connecting microphone...
+                    </span>
+                  </>
+                )}
+              </div>
+              {interimText && (
+                <p className="mt-2 text-sm text-muted-foreground italic">
+                  {interimText}
+                </p>
+              )}
             </div>
           </div>
         )}
