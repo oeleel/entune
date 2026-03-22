@@ -21,13 +21,21 @@ function LoginForm() {
 
   const handleGoogleSignIn = async () => {
     if (!isSupabaseConfigured()) return;
+    setError(null);
     const supabase = createClient();
-    await supabase.auth.signInWithOAuth({
+    const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/api/auth/callback`,
       },
     });
+    if (oauthError) {
+      setError(oauthError.message);
+      return;
+    }
+    if (data?.url) {
+      window.location.href = data.url;
+    }
   };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
