@@ -20,7 +20,9 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
     <div className={`${dmSans.variable} ${playfair.variable} min-h-screen`}>
       <MarketingShell>
-        <SiteLanguageSwitcher />
+        <div className="relative z-20 flex justify-end px-4 pt-4">
+          <SiteLanguageSwitcher />
+        </div>
         {children}
       </MarketingShell>
     </div>
