@@ -4,20 +4,23 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { joinSession } from '@/lib/api';
+import type { PatientUiLanguage } from '@/lib/patient-languages';
 import { MarketingBackLink } from '@/components/marketing/marketing-back-link';
 import { MarketingInnerHeader } from '@/components/marketing/marketing-inner-header';
+import { PatientLanguageSelect } from '@/components/marketing/patient-language-select';
 
 export default function JoinPage() {
   const router = useRouter();
   const [joinCode, setJoinCode] = useState('');
   const [patientName, setPatientName] = useState('');
   const [patientEmail, setPatientEmail] = useState('');
+  const [patientLanguage, setPatientLanguage] = useState<PatientUiLanguage>('ko-KR');
   const [error, setError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
 
   async function handleJoin(e: React.FormEvent) {
     e.preventDefault();
-    if (!joinCode.trim()) return;
+    if (!joinCode.trim() || !patientName.trim() || !patientEmail.trim()) return;
 
     setIsJoining(true);
     setError(null);
@@ -25,8 +28,9 @@ export default function JoinPage() {
     try {
       const { visitId } = await joinSession(
         joinCode.trim(),
-        patientName.trim() || undefined,
-        patientEmail.trim() || undefined
+        patientName.trim(),
+        patientEmail.trim(),
+        patientLanguage
       );
       router.push(`/session/patient?visitId=${visitId}`);
     } catch (err) {
@@ -61,7 +65,7 @@ export default function JoinPage() {
             />
 
             <div className="entune-field">
-              <label htmlFor="patientName">Name (optional)</label>
+              <label htmlFor="patientName">Name</label>
               <input
                 id="patientName"
                 className="entune-input"
@@ -70,10 +74,11 @@ export default function JoinPage() {
                 onChange={(e) => setPatientName(e.target.value)}
                 placeholder="Your name"
                 autoComplete="name"
+                required
               />
             </div>
             <div className="entune-field">
-              <label htmlFor="patientEmail">Email (optional)</label>
+              <label htmlFor="patientEmail">Email</label>
               <input
                 id="patientEmail"
                 className="entune-input"
@@ -82,8 +87,15 @@ export default function JoinPage() {
                 onChange={(e) => setPatientEmail(e.target.value)}
                 placeholder="your@email.com"
                 autoComplete="email"
+                required
               />
             </div>
+
+            <PatientLanguageSelect
+              label="Your language"
+              value={patientLanguage}
+              onChange={setPatientLanguage}
+            />
 
             <button
               type="submit"

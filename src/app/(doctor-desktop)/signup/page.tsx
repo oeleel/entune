@@ -49,7 +49,7 @@ export default function SignupPage() {
           </button>
         </div>
       </form>
-      <p className="entune-dd-muted mt-5">
+      <p className="entune-dd-muted entune-dd-follow-link">
         Already registered?{' '}
         <Link href="/login" className="entune-dd-link">
           Sign in

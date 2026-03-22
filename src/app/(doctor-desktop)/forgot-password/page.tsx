@@ -26,7 +26,7 @@ export default function ForgotPasswordPage() {
           </button>
         </div>
       </form>
-      <p className="entune-dd-muted mt-5">
+      <p className="entune-dd-muted entune-dd-follow-link">
         <Link href="/login" className="entune-dd-link">
           ← Back to sign in
         </Link>

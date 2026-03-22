@@ -470,6 +470,20 @@
   color: var(--entune-text-dim);
 }
 
+.entune-marketing select.entune-select {
+  cursor: pointer;
+}
+
+.entune-marketing select.entune-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.entune-marketing select.entune-select option {
+  background: var(--entune-bg2);
+  color: var(--entune-text);
+}
+
 .entune-marketing .entune-btn {
   width: 100%;
   padding: 16px;
@@ -762,6 +776,11 @@
   font-size: 14px;
   line-height: 1.6;
   color: var(--entune-text-dim);
+}
+
+/* Tailwind mt-* loses to `.entune-dd-muted { margin: 0 }` — use this for links below actions */
+.entune-doctor-desktop .entune-dd-muted.entune-dd-follow-link {
+  margin-top: 1.5rem;
 }
 
 .entune-doctor-desktop .entune-dd-actions {

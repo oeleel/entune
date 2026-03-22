@@ -16,7 +16,6 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [mode, setMode] = useState<'sign_in' | 'sign_up'>('sign_in');
 
   const handleGoogleSignIn = async () => {
     const supabase = createClient();
@@ -35,33 +34,16 @@ function LoginForm() {
 
     const supabase = createClient();
 
-    if (mode === 'sign_up') {
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/api/auth/callback`,
-        },
-      });
-      if (signUpError) {
-        setError(signUpError.message);
-        setIsLoading(false);
-        return;
-      }
-      setError(null);
-      router.push('/dashboard');
-    } else {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (signInError) {
-        setError(signInError.message);
-        setIsLoading(false);
-        return;
-      }
-      router.push('/dashboard');
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (signInError) {
+      setError(signInError.message);
+      setIsLoading(false);
+      return;
     }
+    router.push('/dashboard');
   };
 
   return (
@@ -134,9 +116,7 @@ function LoginForm() {
                 placeholder="••••••••"
                 required
                 minLength={6}
-                autoComplete={
-                  mode === 'sign_up' ? 'new-password' : 'current-password'
-                }
+                autoComplete="current-password"
               />
             </div>
             <button
@@ -144,51 +124,9 @@ function LoginForm() {
               className="entune-btn entune-btn-teal"
               disabled={isLoading}
             >
-              {isLoading
-                ? mode === 'sign_up'
-                  ? 'Creating account...'
-                  : 'Signing in...'
-                : mode === 'sign_up'
-                  ? 'Create account'
-                  : 'Sign in'}
+              {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
-
-          <p className="entune-help">
-            {mode === 'sign_in' ? (
-              <>
-                No account?{' '}
-                <button
-                  type="button"
-                  className="entune-link-btn"
-                  onClick={() => {
-                    setMode('sign_up');
-                    setError(null);
-                  }}
-                >
-                  Create one
-                </button>
-              </>
-            ) : (
-              <>
-                Already have an account?{' '}
-                <button
-                  type="button"
-                  className="entune-link-btn"
-                  onClick={() => {
-                    setMode('sign_in');
-                    setError(null);
-                  }}
-                >
-                  Sign in
-                </button>
-              </>
-            )}
-          </p>
-
-          <p className="entune-help">
-            Don&apos;t have an account? Contact your administrator.
-          </p>
 
           <p className="entune-help">
             <Link href="/forgot-password">Forgot password?</Link>

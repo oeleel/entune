@@ -7,6 +7,9 @@ import { useSessionStatus } from '@/hooks/use-session-status';
 import { useHoldToSpeak } from '@/hooks/use-hold-to-speak';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { updatePatientSessionLanguage } from '@/lib/api';
+import { PatientLanguageSelect } from '@/components/marketing/patient-language-select';
+import { toPatientUiLanguage, type PatientUiLanguage } from '@/lib/patient-languages';
 import type { SupportedLanguage, PatientReport } from '@/lib/types';
 
 function PatientSessionContent() {
@@ -16,6 +19,7 @@ function PatientSessionContent() {
   const [patientLang, setPatientLang] = useState<SupportedLanguage>('ko-KR');
   const [providerLang, setProviderLang] = useState<SupportedLanguage>('en-US');
   const [patientReport, setPatientReport] = useState<PatientReport | null>(null);
+  const [languageError, setLanguageError] = useState<string | null>(null);
 
   const { status } = useSessionStatus(visitId);
   const { transcript } = useRealtimeTranscript(visitId);
@@ -36,7 +40,8 @@ function PatientSessionContent() {
       .single()
       .then(({ data }) => {
         if (data) {
-          setPatientLang(data.language_patient as SupportedLanguage);
+          const p = data.language_patient as SupportedLanguage;
+          setPatientLang((p === 'es-ES' ? 'es-ES' : 'ko-KR') as SupportedLanguage);
           setProviderLang(data.language_provider as SupportedLanguage);
         }
       });
@@ -58,16 +63,58 @@ function PatientSessionContent() {
       });
   }, [status, visitId]);
 
+  async function handlePatientLanguageChange(next: PatientUiLanguage) {
+    setPatientLang(next);
+    setLanguageError(null);
+    if (!visitId || status === 'ended') return;
+    try {
+      await updatePatientSessionLanguage(visitId, next);
+    } catch (e) {
+      setLanguageError(e instanceof Error ? e.message : 'Could not update language');
+    }
+  }
+
   // Filter to show only provider messages as subtitles
   const providerMessages = transcript.filter((t) => t.speaker === 'provider');
 
   if (!visitId) {
-    return <p>No visit ID provided.</p>;
+    return (
+      <p className="entune-marketing min-h-screen p-6 text-[var(--entune-text)]">
+        No visit ID provided.
+      </p>
+    );
   }
 
+  const languageLocked = status === 'ended';
+
   return (
-    <div>
-      <h1>Patient Session</h1>
+    <div className="entune-marketing min-h-screen px-4 py-6 text-[var(--entune-text)]">
+      <div className="mx-auto max-w-2xl">
+        <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="entune-form-title m-0 text-left">Patient session</h1>
+            <p className="m-0 mt-1 text-left text-sm text-[var(--entune-text-mid)]">
+              Translation follows the language you choose below.
+            </p>
+          </div>
+          <div className="w-full sm:w-64 sm:shrink-0">
+            <PatientLanguageSelect
+              id="sessionPatientLanguage"
+              label="Your language"
+              value={toPatientUiLanguage(patientLang)}
+              onChange={handlePatientLanguageChange}
+              disabled={languageLocked}
+            />
+            {languageError && (
+              <p className="mt-2 text-sm text-[#f0a8a8]">{languageError}</p>
+            )}
+            {languageLocked && (
+              <p className="mt-2 text-xs text-[var(--entune-text-dim)]">
+                Language is fixed after the session ends.
+              </p>
+            )}
+          </div>
+        </header>
 
       {status === 'waiting' && (
         <p>Connecting to doctor...</p>
@@ -160,6 +207,7 @@ function PatientSessionContent() {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }
