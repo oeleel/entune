@@ -39,6 +39,16 @@ describe('Design Foundation — Color System', () => {
     }
   });
 
+  it('should have correct canonical HSL values for key shades', () => {
+    const css = readFile(GLOBALS_CSS_PATH);
+    // Spot-check canonical values to verify palette integrity (not just variable existence)
+    expect(css).toMatch(/--entune-teal-500\s*:\s*174\s+50%\s+42%/);
+    expect(css).toMatch(/--entune-amber-500\s*:\s*32\s+90%\s+45%/);
+    expect(css).toMatch(/--entune-red-500\s*:\s*0\s+72%\s+50%/);
+    expect(css).toMatch(/--entune-slate-500\s*:\s*210\s+18%\s+50%/);
+    expect(css).toMatch(/--entune-slate-500\s*:\s*210\s+18%\s+50%/);
+  });
+
   it('should map --primary to teal (not default gray)', () => {
     const css = readFile(GLOBALS_CSS_PATH);
     const rootBlock = css.match(/:root\s*\{([^}]+)\}/s);
@@ -53,16 +63,15 @@ describe('Design Foundation — Color System', () => {
     );
   });
 
-  it('should map --border to a non-default color value', () => {
+  it('should map --border to a teal-tinted oklch value (not default gray)', () => {
     const css = readFile(GLOBALS_CSS_PATH);
     const rootBlock = css.match(/:root\s*\{([^}]+)\}/s);
     expect(rootBlock).not.toBeNull();
     const rootContent = rootBlock![1];
-    expect(rootContent).toMatch(/--border\s*:/);
-    // Must not be the shadcn default gray
+    // Must not be the shadcn default gray oklch(0.922 0 0)
     expect(rootContent).not.toMatch(/--border\s*:\s*oklch\(0\.922\s+0\s+0\)/);
-    // Must be a valid color value (hsl, oklch, or var reference)
-    expect(rootContent).toMatch(/--border\s*:\s*(hsl|oklch|var)\(/);
+    // Must be an oklch value with non-zero chroma and hue ~180 (teal tint)
+    expect(rootContent).toMatch(/--border\s*:\s*oklch\(0\.9\d?\s+0\.00\d\s+180\)/);
   });
 
   it('should set --radius to 0.625rem', () => {
@@ -78,11 +87,16 @@ describe('Design Foundation — Color System', () => {
 });
 
 describe('Design Foundation — Typography', () => {
-  it('should load DM Sans font in root layout with correct variable', () => {
+  it('should load DM Sans font in root layout with correct variable and weights', () => {
     const layout = readFile(ROOT_LAYOUT_PATH);
     // Must import DM_Sans and instantiate it (not just a comment)
     expect(layout).toMatch(/DM_Sans\s*\(/);
     expect(layout).toMatch(/variable\s*:\s*['"]--font-entune-sans['"]/);
+    // Must include multiple weights for medical UI (at least 400 regular + 600 semibold)
+    expect(layout).toMatch(/weight\s*:\s*\[.*['"]400['"].*\]/s);
+    expect(layout).toMatch(/weight\s*:\s*\[.*['"]600['"].*\]/s);
+    // Must include latin subset
+    expect(layout).toMatch(/subsets\s*:\s*\[.*['"]latin['"].*\]/s);
   });
 
   it('should apply DM Sans variable to HTML element', () => {
@@ -147,19 +161,29 @@ describe('Design Foundation — Custom CSS Classes', () => {
 });
 
 describe('Design Foundation — Preserves Existing Classes', () => {
-  it('preserves .entune-marketing class with rules', () => {
+  it('preserves .entune-marketing class with custom properties', () => {
     const css = readFile(GLOBALS_CSS_PATH);
-    // Must be an actual CSS rule (not just a comment)
-    expect(css).toMatch(/\.entune-marketing\s*\{/);
+    const block = css.match(/\.entune-marketing\s*\{([^}]+)\}/s);
+    expect(block).not.toBeNull();
+    // Must define scoped color custom properties
+    expect(block![1]).toMatch(/--entune-teal\s*:/);
+    expect(block![1]).toMatch(/--entune-bg\s*:/);
   });
 
-  it('preserves .entune-doctor-desktop class with rules', () => {
+  it('preserves .entune-doctor-desktop class with custom properties', () => {
     const css = readFile(GLOBALS_CSS_PATH);
-    expect(css).toMatch(/\.entune-doctor-desktop\s*\{/);
+    const block = css.match(/\.entune-doctor-desktop\s*\{([^}]+)\}/s);
+    expect(block).not.toBeNull();
+    // Must define scoped color custom properties
+    expect(block![1]).toMatch(/--entune-teal\s*:/);
+    expect(block![1]).toMatch(/--entune-bg\s*:/);
   });
 
-  it('preserves .aui-md class with rules', () => {
+  it('preserves .aui-md class with typography rules', () => {
     const css = readFile(GLOBALS_CSS_PATH);
-    expect(css).toMatch(/\.aui-md\s*\{/);
+    const block = css.match(/\.aui-md\s*\{([^}]+)\}/s);
+    expect(block).not.toBeNull();
+    // Must set line-height for markdown prose
+    expect(block![1]).toMatch(/line-height\s*:\s*1\.6/);
   });
 });
